@@ -79,6 +79,8 @@ body {
   border-bottom: 1px solid var(--line);
   position: sticky; top: 0; z-index: 30;
 }
+.governance-title { display: flex; align-items: baseline; gap: 10px; flex: 1; min-width: 0; }
+.topbar-note { color: var(--sub); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .brand { display: flex; align-items: center; gap: 10px; }
 .logo {
   width: 34px; height: 34px; border-radius: 9px;
@@ -120,6 +122,18 @@ body {
   display: flex; align-items: center; gap: 14px;
   padding: 14px 20px; flex-wrap: wrap;
 }
+.governance-banner {
+  margin: 18px 20px 0; padding: 13px 15px; border: 1px solid var(--line); border-radius: 12px;
+  background: linear-gradient(120deg, color-mix(in srgb, var(--panel) 92%, var(--accent2)), var(--panel));
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+}
+.governance-banner strong { margin-right: 9px; }
+.governance-banner span { color: var(--sub); font-size: 12px; }
+.gov-summary { display: flex; gap: 6px; flex-wrap: wrap; }
+.gov-count, .gov-badge, .source-badge {
+  display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px;
+  padding: 3px 8px; font-size: 11px; color: var(--sub); background: var(--panel2);
+}
 .search {
   background: var(--panel2); border: 1px solid var(--line); color: var(--text);
   border-radius: 8px; padding: 9px 14px; font-size: 13px; width: 300px; outline: none;
@@ -152,6 +166,13 @@ body {
   border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px;
 }
 .card-desc { color: var(--sub); font-size: 12.5px; line-height: 1.6; flex: 1; }
+.card-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.gov-badge { color: var(--text); }
+.gov-ready { border-color: color-mix(in srgb, var(--accent) 70%, var(--line)); color: var(--accent); }
+.gov-normal-gate { border-color: color-mix(in srgb, #fbbf24 65%, var(--line)); color: #fbbf24; }
+.gov-strong-gate { border-color: color-mix(in srgb, var(--red) 65%, var(--line)); color: var(--red); }
+.gov-dedupe, .gov-pending { border-color: color-mix(in srgb, var(--accent2) 60%, var(--line)); color: #93c5fd; }
+.card-risk { font-size: 11px; color: var(--sub); line-height: 1.45; }
 .card-foot { display: flex; align-items: center; justify-content: space-between; }
 .card-folder { font-size: 11px; color: #6b7280; font-family: ui-monospace, monospace; }
 .use-btn {
@@ -241,6 +262,16 @@ body {
   max-height: 160px; overflow-y: auto;
 }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+.detail-list { display: grid; gap: 8px; margin-top: 14px; }
+.detail-row { padding: 9px 10px; border: 1px solid var(--line); background: var(--panel2); border-radius: 9px; display: grid; gap: 4px; }
+.detail-row span { color: var(--sub); font-size: 11px; }
+.detail-row strong { font-size: 12px; line-height: 1.5; font-weight: 500; word-break: break-word; }
+
+@media (max-width: 720px) {
+  .governance-title { display: block; }
+  .governance-title > * { display: block; margin: 2px 0; }
+  .topbar-note { white-space: normal; }
+}
 
 /* toast */
 .toast {

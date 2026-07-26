@@ -20,10 +20,10 @@
       </div>
       <nav class="nav">
         <button class="nav-item active" data-view="skills"><span class="nav-ico">🎴</span> Skill</button>
-        <button class="nav-item" data-view="experts"><span class="nav-ico">🧠</span> 专家</button>
+        <button id="experts-tab" class="nav-item" type="button"><span class="nav-ico">🧠</span> 专家（P4）</button>
       </nav>
       <div class="sidebar-foot">
-        <button id="set-open" class="theme-toggle">⚙️ 模型设置</button>
+        <button class="theme-toggle" type="button" disabled title="模型/API 设置将在 P5 按本地加密与逐次确认规则接入">⚙️ 模型设置（P5）</button>
         <button id="theme-toggle" class="theme-toggle"><span id="theme-ico">🌙</span> <span id="theme-label">深色</span></button>
         <span id="llm-badge" class="llm-badge"></span>
       </div>
@@ -32,22 +32,20 @@
     <!-- 主区 -->
     <div class="main-col">
       <header class="topbar">
-        <div class="dir-box">
-          <button id="pick" class="btn">📁 浏览</button>
-          <input id="dir" class="dir-input" placeholder="本地 Skill 文件夹路径" />
-          <select id="dir-history" class="dir-select" title="历史目录"></select>
-          <button id="load" class="btn primary">导入</button>
+        <div class="governance-title">
+          <span class="agent-label">数据来源</span>
+          <strong>技能管理中心统一库存</strong>
+          <span class="topbar-note">P3 只读浏览：不扫描任意目录、不生成全文口令、不执行本地命令</span>
         </div>
-        <div class="agent-box">
-          <span class="agent-label">本地 Agent</span>
-          <select id="agent" class="agent-select"></select>
-        </div>
+        <button id="refresh" class="btn primary" type="button">刷新治理结果</button>
       </header>
 
       <!-- 视图：Skill -->
       <section id="view-skills" class="view">
+        <div id="governance-banner" class="governance-banner">正在读取治理中心…</div>
         <div class="toolbar">
           <input id="search" class="search" placeholder="搜索 Skill 名称或功能…" />
+          <div id="treatment-filters" class="cats"></div>
           <div id="cats" class="cats"></div>
           <span id="count" class="count"></span>
         </div>
@@ -68,7 +66,7 @@
     </div>
   </div>
 
-  <!-- Skill 使用弹窗 -->
+  <!-- P3 治理详情弹窗：只呈现治理信息，不提供调用、复制或执行。 -->
   <div id="modal" class="modal-mask" style="display:none">
     <div class="modal">
       <div class="modal-head">
@@ -79,18 +77,9 @@
         <button class="modal-x" id="m-close">×</button>
       </div>
       <div class="modal-desc" id="m-desc"></div>
-      <label class="modal-label">补充说明 / 具体任务（可留空）</label>
-      <textarea id="m-task" class="modal-task" placeholder="例如：帮我给这篇讲 Loop 工程的文章起 10 个标题"></textarea>
-      <div class="modal-mode">
-        <label class="mode-opt"><input type="radio" name="m-mode" value="path" checked> 路径口令<span class="mode-hint">指名 Skill + 补充说明 + SKILL.md 地址，Codex 自己读（推荐）</span></label>
-        <label class="mode-opt"><input type="radio" name="m-mode" value="inject"> 完整口令<span class="mode-hint">把说明书整篇注入，换机器 / 读不到路径时用</span></label>
-      </div>
-      <div class="modal-cmd-label">复制这段口令，粘贴到 Codex 对话框发送 <span id="m-chars" class="cmd-chars"></span></div>
-      <pre class="modal-cmd" id="m-cmd"></pre>
+      <div id="m-meta" class="detail-list"></div>
       <div class="modal-actions">
-        <button class="btn ghost" id="m-cancel">取消</button>
-        <button class="btn ghost" id="m-run">本地运行</button>
-        <button class="btn primary" id="m-copy">复制口令</button>
+        <button class="btn primary" id="m-cancel" type="button">关闭</button>
       </div>
     </div>
   </div>

@@ -9,6 +9,7 @@ const path = require('path');
 const os = require('os');
 const { spawn, execSync } = require('child_process');
 const { URL } = require('url');
+const { loadGovernanceCatalog } = require('./governance-adapter');
 
 const PORT = process.env.PORT || 4177;
 const PUBLIC = path.join(__dirname, 'public');
@@ -346,6 +347,31 @@ const server = http.createServer(async (req, res) => {
       model: cfg.model,
       baseUrl: cfg.baseUrl,
       // 密钥永远不下发前端，只告知是否已配置
+    });
+  }
+
+  // P3 的唯一库存接口：只读取技能管理中心，不允许退回旧目录扫描器。
+  if (p === '/api/governance' && req.method === 'GET') {
+    try {
+      return sendJson(res, 200, loadGovernanceCatalog());
+    } catch (e) {
+      return sendJson(res, 503, {
+        error: '治理中心当前不可读取；为避免显示两套不一致的库存，页面不会退回旧目录扫描。',
+        evidence: 'unknown',
+        safety: { falls_back_to_legacy_scanner: false },
+      });
+    }
+  }
+
+  // P3: disable legacy paths that bypass the governance catalog.
+  if (
+    p === '/api/skills' || p === '/api/dirs' || p === '/api/pick-dir' ||
+    p === '/api/prompt' || p === '/api/run' || p === '/api/settings' ||
+    p.startsWith('/api/experts') || p === '/api/expert-prompt'
+  ) {
+    return sendJson(res, 410, {
+      error: '该旧版接口已在 P3 关闭。请使用治理中心统一库存；调用、专家与模型设置将在后续安全阶段重新接入。',
+      safety: { legacy_path_disabled: true, direct_execution_enabled: false },
     });
   }
 

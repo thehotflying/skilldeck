@@ -10,6 +10,14 @@ const SOURCE_LAYERS = {
   'personal-plugin-cache': '个人插件缓存',
 };
 
+const TREATMENT_CODES = {
+  '待整理': 'pending',
+  '去重处理': 'dedupe',
+  '普通确认门': 'normal-gate',
+  '强确认门': 'strong-gate',
+  '可直接用': 'ready',
+};
+
 function runControlCenter(command, args = []) {
   const result = spawnSync('python3', [CONTROL_CENTER_SCRIPT, '--format', 'json', command, ...args], {
     encoding: 'utf8', timeout: 30_000, maxBuffer: 32 * 1024 * 1024,
@@ -44,6 +52,7 @@ function normalize(record, duplicateGroups) {
     stable_id: record.id,
     name: record.name,
     description: record.description || '',
+    one_line: (record.description || '（无描述）').split(/。|\.\s|；|当用户|触发/)[0].slice(0, 72),
     tags: record.triggers || [],
     category: treatment.category || '未分类',
     source: record.source,
@@ -54,7 +63,7 @@ function normalize(record, duplicateGroups) {
     lifecycle_status: 'discovered',
     verification_status: 'not_verified',
     treatment: {
-      entry: treatment.entry || 'unknown',
+      entry: TREATMENT_CODES[treatment.entry] || treatment.entry || 'unknown',
       action: treatment.action || null,
       availability: treatment.availability || null,
       management_advice: treatment.management_advice || null,
@@ -103,4 +112,3 @@ function loadGovernanceCatalog() {
 }
 
 module.exports = { CONTROL_CENTER_SCRIPT, loadGovernanceCatalog, normalize };
-
