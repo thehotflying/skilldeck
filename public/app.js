@@ -1,5 +1,5 @@
 const $ = (s) => document.querySelector(s);
-const state = { skills: [], filtered: [], category: 'all', treatment: 'all', query: '', catalog: null };
+const state = { skills: [], filtered: [], category: 'all', treatment: 'all', query: '', catalog: null, current: null, expertIds: [], view: 'skills' };
 const LABEL = { pending: '待整理', dedupe: '去重处理', 'normal-gate': '普通确认门', 'strong-gate': '强确认门', ready: '可直接用', unknown: '待核验' };
 const esc = (v) => String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -15,6 +15,19 @@ function setup() {
   $('#search').addEventListener('input', (e) => { state.query = e.target.value; filter(); });
   $('#m-close').addEventListener('click', closeModal);
   $('#m-cancel').addEventListener('click', closeModal);
+  $('#m-generate').addEventListener('click', () => requestSkillCard());
+  $('#m-add-expert').addEventListener('click', addCurrentToExpert);
+  $('#experts-tab').addEventListener('click', () => switchView('experts'));
+  document.querySelector('[data-view="skills"]').addEventListener('click', () => switchView('skills'));
+  $('#expert-generate').addEventListener('click', requestExpertCard);
+}
+
+function switchView(view) {
+  state.view = view;
+  $('#view-skills').hidden = view !== 'skills';
+  $('#view-experts').hidden = view !== 'experts';
+  document.querySelectorAll('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.view === view || (item.id === 'experts-tab' && view === 'experts')));
+  if (view === 'experts') renderExpertWorkbench();
 }
 
 function loadCatalog() {
@@ -25,6 +38,7 @@ function loadCatalog() {
       if (!res.ok || data.error) throw new Error(data.error || '读取失败');
       state.catalog = data;
       state.skills = data.skills || [];
+      updateExpertCount();
       renderBanner();
       renderFilters();
       filter();
@@ -84,6 +98,7 @@ function renderGrid() {
 }
 
 function openDetail(s) {
+  state.current = s;
   const entry = s.treatment?.entry || 'unknown';
   const groups = s.duplicate?.groups || [];
   $('#m-name').textContent = s.name;
@@ -96,10 +111,104 @@ function openDetail(s) {
     ['下一步', s.treatment?.next_step || '仅查看；调用与变更操作将在后续安全阶段接入'],
   ];
   $('#m-meta').innerHTML = rows.map(([k, v]) => `<div class="detail-row"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join('');
+  $('#m-task').value = '';
+  $('#m-confirm').checked = false;
+  $('#m-confirm-wrap').hidden = entry !== 'normal-gate';
+  $('#m-card').hidden = true;
+  $('#m-card').innerHTML = '';
+  $('#m-generate').textContent = entry === 'strong-gate' || entry === 'pending' || entry === 'dedupe' ? '生成操作卡' : '生成调用卡';
+  $('#m-add-expert').textContent = state.expertIds.includes(s.stable_id) ? '已加入专家组合' : '加入专家组合';
   $('#modal').style.display = 'grid';
 }
 
 function closeModal() { $('#modal').style.display = 'none'; }
+
+function requestCard(url, body) {
+  return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    .then((res) => res.json().then((data) => ({ res, data })))
+    .then(({ res, data }) => {
+      if (!res.ok || data.error) throw new Error(data.error || '生成操作卡失败');
+      return data;
+    });
+}
+
+function requestSkillCard() {
+  if (!state.current) return;
+  const body = { skill_id: state.current.stable_id, task: $('#m-task').value.trim(), confirmed: $('#m-confirm').checked };
+  $('#m-generate').disabled = true;
+  requestCard('/api/invocation-card', body)
+    .then((card) => renderInvocationCard($('#m-card'), card))
+    .catch((e) => toast(e.message || '生成失败'))
+    .finally(() => { $('#m-generate').disabled = false; });
+}
+
+function copyText(text) {
+  if (!navigator.clipboard || !navigator.clipboard.writeText) return Promise.resolve(false);
+  return navigator.clipboard.writeText(text).then(() => true).catch(() => false);
+}
+
+function renderInvocationCard(container, card) {
+  const isInstruction = card.kind === 'path-instruction';
+  const detail = isInstruction
+    ? `<pre class="modal-cmd">${esc(card.instruction)}</pre><button class="btn primary copy-card" type="button">复制调用指令</button>`
+    : `<div class="card-summary">${esc(card.required_next_step || card.confirmation_text || '')}</div>`;
+  container.innerHTML = `<div class="invocation-head"><strong>${esc(card.title || '操作卡')}</strong><span class="gov-badge gov-${esc(card.treatment || 'unknown')}">${esc(card.treatment_label || '待核验')}</span></div><p>${esc(card.summary || '')}</p>${detail}<p class="invocation-note">此卡没有执行 Skill、没有发送外部请求、没有写入技能库；${card.safety?.confirmation_persisted === false ? '页面确认也不会被保存。' : ''}</p>`;
+  container.hidden = false;
+  const button = container.querySelector('.copy-card');
+  if (button) button.addEventListener('click', () => copyText(card.instruction).then((ok) => toast(ok ? '调用指令已复制；请由你发送到 Codex 对话。' : '复制失败，请手动复制指令。')));
+}
+
+function expertSkills() { return state.expertIds.map((id) => state.skills.find((skill) => skill.stable_id === id)).filter(Boolean); }
+
+function highestEntry(skills) {
+  const rank = { pending: 4, dedupe: 4, unknown: 4, 'strong-gate': 3, 'normal-gate': 2, ready: 1 };
+  return skills.map((skill) => skill.treatment?.entry || 'unknown').sort((a, b) => rank[b] - rank[a])[0] || 'unknown';
+}
+
+function addCurrentToExpert() {
+  if (!state.current) return;
+  if (!state.expertIds.includes(state.current.stable_id)) state.expertIds.push(state.current.stable_id);
+  $('#m-add-expert').textContent = '已加入专家组合';
+  updateExpertCount();
+  toast('已加入本次专家组合；未保存到任何库存。');
+}
+
+function updateExpertCount() {
+  $('#expert-selected-count').textContent = state.expertIds.length ? `(${state.expertIds.length})` : '';
+}
+
+function renderExpertWorkbench() {
+  const skills = expertSkills();
+  const entry = highestEntry(skills);
+  updateExpertCount();
+  $('#expert-members').innerHTML = skills.length
+    ? skills.map((skill) => `<span class="expert-member">${esc(skill.name)} <button type="button" data-remove-id="${esc(skill.stable_id)}" aria-label="移除 ${esc(skill.name)}">×</button></span>`).join('')
+    : '<div class="expert-empty">还没有成员。打开任意 Skill 的详情后，选择“加入专家组合”。</div>';
+  $('#expert-members').querySelectorAll('[data-remove-id]').forEach((button) => button.addEventListener('click', () => {
+    state.expertIds = state.expertIds.filter((id) => id !== button.dataset.removeId);
+    renderExpertWorkbench();
+  }));
+  if (!skills.length) {
+    $('#expert-status').textContent = '尚未形成专家组合。';
+    $('#expert-confirm-wrap').hidden = true;
+    $('#expert-card').hidden = true;
+    return;
+  }
+  $('#expert-status').innerHTML = `组合最高治理状态：<span class="gov-badge gov-${esc(entry)}">${esc(LABEL[entry] || entry)}</span>。所有成员均按这个最高等级处理。`;
+  $('#expert-confirm-wrap').hidden = entry !== 'normal-gate';
+  $('#expert-confirm').checked = false;
+  $('#expert-card').hidden = true;
+}
+
+function requestExpertCard() {
+  const skills = expertSkills();
+  if (!skills.length) { toast('请先加入至少一个 Skill。'); return; }
+  $('#expert-generate').disabled = true;
+  requestCard('/api/expert-card', { skill_ids: skills.map((skill) => skill.stable_id), task: $('#expert-task').value.trim(), confirmed: $('#expert-confirm').checked })
+    .then((card) => renderInvocationCard($('#expert-card'), card))
+    .catch((e) => toast(e.message || '生成失败'))
+    .finally(() => { $('#expert-generate').disabled = false; });
+}
 let toastTimer;
 function toast(msg) {
   let el = $('#toast');

@@ -20,7 +20,7 @@
       </div>
       <nav class="nav">
         <button class="nav-item active" data-view="skills"><span class="nav-ico">🎴</span> Skill</button>
-        <button id="experts-tab" class="nav-item" type="button"><span class="nav-ico">🧠</span> 专家（P4）</button>
+        <button id="experts-tab" class="nav-item" type="button"><span class="nav-ico">🧠</span> 专家组合 <span id="expert-selected-count"></span></button>
       </nav>
       <div class="sidebar-foot">
         <button class="theme-toggle" type="button" disabled title="模型/API 设置将在 P5 按本地加密与逐次确认规则接入">⚙️ 模型设置（P5）</button>
@@ -35,7 +35,7 @@
         <div class="governance-title">
           <span class="agent-label">数据来源</span>
           <strong>技能管理中心统一库存</strong>
-          <span class="topbar-note">P3 只读浏览：不扫描任意目录、不生成全文口令、不执行本地命令</span>
+          <span class="topbar-note">P4 安全调用卡：不扫描任意目录、不注入正文、不执行本地命令</span>
         </div>
         <button id="refresh" class="btn primary" type="button">刷新治理结果</button>
       </header>
@@ -53,15 +53,18 @@
         <div id="empty" class="empty" style="display:none"></div>
       </section>
 
-      <!-- 视图：专家 -->
+      <!-- P4：临时专家组合。成员与任务仅在当前页面内存在，不调用旧专家接口。 -->
       <section id="view-experts" class="view" hidden>
-        <div class="toolbar">
-          <button id="exp-auto" class="btn primary">✨ AI 自动分类生成专家</button>
-          <button id="exp-manual" class="btn">＋ 手动创建专家</button>
-          <span id="exp-count" class="count"></span>
+        <div class="expert-workbench">
+          <div><h2>本次专家组合</h2><p>把多个 Skill 临时组合为一个工作模式。组合自动继承成员中最高的治理状态，不保存、不执行。</p></div>
+          <div id="expert-members" class="expert-members"></div>
+          <div id="expert-status" class="expert-status"></div>
+          <label class="modal-label" for="expert-task">本次任务范围</label>
+          <textarea id="expert-task" class="modal-task" placeholder="例如：为养老机构的活动方案形成一份可审阅草稿"></textarea>
+          <label id="expert-confirm-wrap" class="confirm-wrap" hidden><input id="expert-confirm" type="checkbox"> 我确认仅为上述最小范围生成调用指令；真正执行风险动作时仍需再次确认。</label>
+          <div class="modal-actions"><button id="expert-generate" class="btn primary" type="button">生成专家操作卡</button></div>
+          <div id="expert-card" class="invocation-card" hidden></div>
         </div>
-        <main id="exp-grid" class="grid"></main>
-        <div id="exp-empty" class="empty" style="display:none">还没有专家。点上面「AI 自动分类」让大模型按用途把你的 Skill 打包成专家，或手动挑 Skill 创建。</div>
       </section>
     </div>
   </div>
@@ -78,8 +81,14 @@
       </div>
       <div class="modal-desc" id="m-desc"></div>
       <div id="m-meta" class="detail-list"></div>
+      <label class="modal-label" for="m-task">本次任务范围（仅用于生成调用或操作卡）</label>
+      <textarea id="m-task" class="modal-task" placeholder="例如：先给我一份草稿和建议，不要直接写入文件"></textarea>
+      <label id="m-confirm-wrap" class="confirm-wrap" hidden><input id="m-confirm" type="checkbox"> 我确认仅为上述最小范围生成调用指令；真正执行风险动作时仍需再次确认。</label>
+      <div id="m-card" class="invocation-card" hidden></div>
       <div class="modal-actions">
-        <button class="btn primary" id="m-cancel" type="button">关闭</button>
+        <button class="btn ghost" id="m-add-expert" type="button">加入专家组合</button>
+        <button class="btn primary" id="m-generate" type="button">生成调用/操作卡</button>
+        <button class="btn ghost" id="m-cancel" type="button">关闭</button>
       </div>
     </div>
   </div>

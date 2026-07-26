@@ -90,6 +90,12 @@ function loadGovernanceCatalog() {
     duplicateIndex(duplicates.same_sha256, 'same_sha256'),
   );
   const skills = (records.results || []).map((record) => normalize(record, groups));
+  const statusOrder = ['pending', 'dedupe', 'normal-gate', 'strong-gate', 'ready', 'unknown'];
+  const treatmentGroups = statusOrder.map((group) => ({
+    group,
+    entry: Object.entries(TREATMENT_CODES).find(([, code]) => code === group)?.[0] || '待核验',
+    count: skills.filter((skill) => skill.treatment.entry === group).length,
+  }));
   return {
     schema_version: 'skilldeck-governance.v1',
     source_of_truth: 'skill-plugin-control-center',
@@ -97,8 +103,13 @@ function loadGovernanceCatalog() {
     skills,
     summary: {
       skill_count: skills.length,
-      treatment_total: treatment.total,
-      treatment_groups: (treatment.entries || []).map(({ group, entry, count }) => ({ group, entry, count })),
+      treatment_total: skills.length,
+      treatment_groups: treatmentGroups,
+      queue_treatment_groups: (treatment.entries || []).map(({ group, entry, count }) => ({ group, entry, count })),
+      treatment_alignment: treatmentGroups.every((group) => {
+        const queue = (treatment.entries || []).find((entry) => entry.group === group.group);
+        return !queue || queue.count === group.count;
+      }) ? 'aligned' : 'queue_summary_differs_from_current_records',
       same_name_groups: (duplicates.same_name || []).length,
       same_sha256_groups: (duplicates.same_sha256 || []).length,
     },

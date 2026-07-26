@@ -14,10 +14,15 @@ assert.ok(catalog.skills.length > 0);
 assert.ok(catalog.skills.every((skill) => skill.stable_id && skill.source_layer));
 assert.ok(catalog.skills.every((skill) => skill.absolute_path === null));
 assert.ok(catalog.skills.every((skill) => skill.invocation.direct_execution_allowed === false));
+const entryCounts = Object.fromEntries(catalog.summary.treatment_groups.map((group) => [group.group, group.count]));
+for (const [entry, expected] of Object.entries(entryCounts)) {
+  assert.equal(catalog.skills.filter((skill) => skill.treatment.entry === entry).length, expected, `治理状态 ${entry} 应与队列一致`);
+}
+assert.equal(catalog.summary.treatment_total, catalog.skills.length);
+assert.ok(['aligned', 'queue_summary_differs_from_current_records'].includes(catalog.summary.treatment_alignment));
 console.log(JSON.stringify({
   ok: true,
   skills: catalog.summary.skill_count,
   same_name_groups: catalog.summary.same_name_groups,
   treatment_groups: catalog.summary.treatment_groups,
 }, null, 2));
-

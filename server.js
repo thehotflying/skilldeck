@@ -10,6 +10,7 @@ const os = require('os');
 const { spawn, execSync } = require('child_process');
 const { URL } = require('url');
 const { loadGovernanceCatalog } = require('./governance-adapter');
+const { buildInvocationCard } = require('./governance-invocation-policy');
 
 const PORT = process.env.PORT || 4177;
 const PUBLIC = path.join(__dirname, 'public');
@@ -360,6 +361,40 @@ const server = http.createServer(async (req, res) => {
         evidence: 'unknown',
         safety: { falls_back_to_legacy_scanner: false },
       });
+    }
+  }
+
+  // P4：只生成治理门控后的调用/操作卡，不读取 Skill 正文、不执行命令、不写入任何库存。
+  if ((p === '/api/invocation-card' || p === '/api/expert-card') && req.method === 'POST') {
+    const body = await readBody(req);
+    const requestedIds = p === '/api/expert-card'
+      ? (Array.isArray(body.skill_ids) ? body.skill_ids : [])
+      : [body.skill_id].filter(Boolean);
+    try {
+      const catalog = loadGovernanceCatalog();
+      const byId = new Map((catalog.skills || []).map((skill) => [skill.stable_id, skill]));
+      const selected = requestedIds.map((id) => byId.get(id)).filter(Boolean);
+      if (!selected.length || selected.length !== requestedIds.length) {
+        return sendJson(res, 400, { error: '选择的 Skill 已不存在于当前治理库存；请先刷新页面。' });
+      }
+      const card = buildInvocationCard(selected, {
+        task: body.task,
+        confirmed: body.confirmed === true,
+        expert: p === '/api/expert-card',
+      });
+      return sendJson(res, 200, {
+        ...card,
+        safety: {
+          read_only: true,
+          no_skill_body_exposed: true,
+          absolute_paths_exposed: false,
+          local_execution_started: false,
+          external_request_started: false,
+          confirmation_persisted: false,
+        },
+      });
+    } catch (e) {
+      return sendJson(res, 503, { error: `治理中心当前不可读取：${e.message}` });
     }
   }
 
