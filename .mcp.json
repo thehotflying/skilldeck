@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "skilldeck_mcp": {
-      "title": "SkillDeck · 可视化 Skill 控制台",
-      "description": "把本地 Skill 渲染成 Codex 原生 widget 卡片墙，点使用把该 Skill 的命令发送到 Codex 会话执行。",
+      "title": "SkillDeck · 技能管理中心前台",
+      "description": "P5 安全模式：widget 不扫描目录、不读取 Skill 正文、不发送会话命令；本地页面读取统一治理库存。",
       "command": "node",
       "args": ["./mcp/server.mjs"],
       "cwd": "."

@@ -1,26 +1,26 @@
 {
   "name": "skilldeck",
   "version": "0.2.2",
-  "description": "SkillDeck —— 可视化 Skill 控制台。把本地 Skill 变成 Codex 里的原生卡片墙，点使用把命令发送到会话执行。",
+  "description": "SkillDeck —— 技能管理中心的可视化前台。统一展示治理库存、风险状态与安全调用卡；不绕过确认门。",
   "author": { "name": "空格" },
   "keywords": ["skill", "widget", "console", "codex", "productivity"],
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "SkillDeck",
-    "shortDescription": "在 Codex 里用卡片墙浏览本地 Skill，一键把命令发送到会话执行。",
-    "longDescription": "SkillDeck 把你本地的一堆 Skill（默认 ~/.claude/skills）渲染成 Codex 原生 widget 卡片墙：每张卡显示 Skill 名称、一句话介绍、分类。点某张卡的「使用」，填写具体任务并确认后，SkillDeck 会把这条命令通过 sendFollowUpMessage 发送到当前 Codex 会话，由 Codex 直接执行。",
+    "shortDescription": "查看技能管理中心统一库存，并按风险等级生成安全调用或操作卡。",
+    "longDescription": "SkillDeck 是“技能管理中心”的可视化前台：卡片墙、筛选、临时专家组合都读取统一治理库存。可直接使用的 Skill 只生成路径式调用指令；普通确认门先显示最小范围确认；强确认门、待整理和去重项只生成操作卡。模型设置的密钥只存 macOS 钥匙串，默认不外发 Skill 正文或内部资料。P5 阶段的 Codex widget 处于安全模式，不扫描目录、不读取 Skill 正文、不直接向会话发送命令。",
     "developerName": "空格",
     "category": "Productivity",
     "brandColor": "#6ee7b7",
     "capabilities": [
-      "本地 Skill 卡片墙",
-      "Codex 原生 widget",
-      "关键词自动分类",
-      "一键发送命令到会话"
+      "治理中心统一卡片墙",
+      "风险与重复关系展示",
+      "安全调用与操作卡",
+      "本地钥匙串模型设置"
     ],
     "defaultPrompt": [
-      "打开 SkillDeck。",
-      "用 SkillDeck 浏览我的 Skill。"
+      "打开 SkillDeck，查看技能管理中心统一库存。",
+      "用 SkillDeck 为一个 Skill 生成安全调用卡。"
     ]
   }
 }

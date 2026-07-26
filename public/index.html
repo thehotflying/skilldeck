@@ -23,7 +23,7 @@
         <button id="experts-tab" class="nav-item" type="button"><span class="nav-ico">🧠</span> 专家组合 <span id="expert-selected-count"></span></button>
       </nav>
       <div class="sidebar-foot">
-        <button class="theme-toggle" type="button" disabled title="模型/API 设置将在 P5 按本地加密与逐次确认规则接入">⚙️ 模型设置（P5）</button>
+        <button id="set-open" class="theme-toggle" type="button">⚙️ 模型与隐私设置</button>
         <button id="theme-toggle" class="theme-toggle"><span id="theme-ico">🌙</span> <span id="theme-label">深色</span></button>
         <span id="llm-badge" class="llm-badge"></span>
       </div>
@@ -137,25 +137,33 @@
     </div>
   </div>
 
-  <!-- 模型设置弹窗 -->
+  <!-- P5：模型设置仅保存最小元数据；密钥只写入 macOS 钥匙串。 -->
   <div id="set-modal" class="modal-mask" style="display:none">
     <div class="modal">
       <div class="modal-head">
-        <div class="modal-skill">⚙️ 模型设置</div>
+        <div class="modal-skill">⚙️ 模型与隐私设置</div>
         <button class="modal-x" id="set-close">×</button>
       </div>
-      <div class="modal-desc">用于「AI 自动分类生成专家」。密钥只保存在本机 <code>.skilldeck.local.json</code>（已加入 .gitignore，不会提交到仓库，也不会下发到页面）。</div>
-      <label class="modal-label">API URL</label>
-      <input id="set-url" class="set-input" placeholder="https://api.deepseek.com" />
-      <label class="modal-label">模型名称</label>
-      <input id="set-model" class="set-input" placeholder="deepseek-v4-pro" />
-      <label class="modal-label">API Key</label>
-      <input id="set-key" class="set-input" type="password" autocomplete="off" placeholder="sk-..." />
-      <div id="set-hint" class="cmd-chars"></div>
-      <div class="modal-actions">
-        <button class="btn ghost" id="set-cancel">取消</button>
-        <button class="btn primary" id="set-save">保存</button>
+      <div class="model-policy">
+        <strong>离线优先，模型不可绕过治理。</strong>
+        <p>默认只可用于分类、推荐和摘要；不会自动发送完整 SKILL.md、内部路径、住民/员工/机构资料。真正调用外部模型时，将逐次显示外发范围并等待确认。</p>
       </div>
+      <div id="set-legacy-warning" class="model-warning" hidden></div>
+      <label class="modal-label">服务标识</label>
+      <input id="set-provider" class="set-input" placeholder="例如：openai-compatible" />
+      <label class="modal-label">API URL</label>
+      <input id="set-url" class="set-input" placeholder="https://api.example.com/v1" />
+      <label class="modal-label">模型名称</label>
+      <input id="set-model" class="set-input" placeholder="例如：gpt-4.1-mini" />
+      <label class="modal-label">API Key（只存入 macOS 钥匙串）</label>
+      <input id="set-key" class="set-input" type="password" autocomplete="new-password" placeholder="留空则不改已有密钥" />
+      <div id="set-hint" class="cmd-chars">未配置模型；所有浏览、治理与调用卡均可离线使用。</div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="set-cancel" type="button">取消</button>
+        <button class="btn primary" id="set-save" type="button">保存本地设置</button>
+      </div>
+      <label class="confirm-wrap model-test-confirm"><input id="set-test-confirm" type="checkbox"> 我确认现在只访问上述模型提供商进行连通性测试；不发送任何 Skill 或机构资料。</label>
+      <div class="modal-actions model-test-actions"><button class="btn ghost" id="set-test" type="button">测试连接（不发送 Skill 数据）</button></div>
     </div>
   </div>
 

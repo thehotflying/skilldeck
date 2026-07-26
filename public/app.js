@@ -20,6 +20,11 @@ function setup() {
   $('#experts-tab').addEventListener('click', () => switchView('experts'));
   document.querySelector('[data-view="skills"]').addEventListener('click', () => switchView('skills'));
   $('#expert-generate').addEventListener('click', requestExpertCard);
+  $('#set-open').addEventListener('click', openModelSettings);
+  $('#set-close').addEventListener('click', closeModelSettings);
+  $('#set-cancel').addEventListener('click', closeModelSettings);
+  $('#set-save').addEventListener('click', saveModelSettings);
+  $('#set-test').addEventListener('click', testModelConnection);
 }
 
 function switchView(view) {
@@ -209,6 +214,70 @@ function requestExpertCard() {
     .catch((e) => toast(e.message || '生成失败'))
     .finally(() => { $('#expert-generate').disabled = false; });
 }
+
+function modelRequest(url, options) {
+  return fetch(url, options).then((res) => res.json().then((data) => ({ res, data }))).then(({ res, data }) => {
+    if (!res.ok || data.error) throw new Error(data.error || '模型设置请求失败');
+    return data;
+  });
+}
+
+function renderModelStatus(config) {
+  $('#set-provider').value = config.provider_id || 'default';
+  $('#set-url').value = config.base_url || '';
+  $('#set-model').value = config.model || '';
+  $('#set-key').value = '';
+  $('#set-test-confirm').checked = false;
+  const detail = config.has_keychain_secret ? '密钥已安全保存在 macOS 钥匙串。' : '尚未保存密钥。';
+  $('#set-hint').textContent = `${detail} 目前仅允许“推荐、分类与摘要”；不发送完整 Skill 正文或内部资料。`;
+  const warning = $('#set-legacy-warning');
+  if (config.legacy_plaintext_key_detected) {
+    warning.hidden = false;
+    warning.textContent = '发现旧版明文密钥字段：本版本不会读取或使用它。请重新输入密钥后保存，系统会仅保留不含密钥的元数据。';
+  } else {
+    warning.hidden = true;
+    warning.textContent = '';
+  }
+}
+
+function openModelSettings() {
+  $('#set-modal').style.display = 'grid';
+  $('#set-hint').textContent = '正在读取本地模型状态…';
+  modelRequest('/api/model-config')
+    .then(renderModelStatus)
+    .catch((e) => { $('#set-hint').textContent = e.message || '无法读取模型设置。'; });
+}
+
+function closeModelSettings() { $('#set-modal').style.display = 'none'; }
+
+function saveModelSettings() {
+  const payload = {
+    provider_id: $('#set-provider').value.trim(),
+    base_url: $('#set-url').value.trim(),
+    model: $('#set-model').value.trim(),
+    api_key: $('#set-key').value,
+  };
+  $('#set-save').disabled = true;
+  $('#set-hint').textContent = '正在保存本地元数据；密钥不会写入项目文件。';
+  modelRequest('/api/model-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+    .then((data) => { renderModelStatus(data); toast('模型设置已保存；没有发起外部请求。'); })
+    .catch((e) => { $('#set-hint').textContent = e.message || '保存失败。'; })
+    .finally(() => { $('#set-save').disabled = false; });
+}
+
+function testModelConnection() {
+  if (!$('#set-test-confirm').checked) {
+    $('#set-hint').textContent = '请先勾选确认：测试将访问模型提供商，但不会发送 Skill 或机构资料。';
+    return;
+  }
+  $('#set-test').disabled = true;
+  $('#set-hint').textContent = '正在访问模型提供商的元数据端点…';
+  modelRequest('/api/model-test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirmed_external: true }) })
+    .then((data) => { $('#set-hint').textContent = `连接成功（HTTP ${data.status}）；没有发送 Skill 或机构资料。`; })
+    .catch((e) => { $('#set-hint').textContent = e.message || '连接测试失败。'; })
+    .finally(() => { $('#set-test').disabled = false; });
+}
+
 let toastTimer;
 function toast(msg) {
   let el = $('#toast');

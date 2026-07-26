@@ -1,5 +1,6 @@
 {
-  "deepseekApiKey": "sk-在这里填你自己的 key（本文件是模板，不含真实密钥）",
-  "baseUrl": "https://api.deepseek.com",
-  "model": "deepseek-v4-pro"
+  "provider_id": "openai-compatible",
+  "base_url": "https://api.example.com/v1",
+  "model": "example-model",
+  "enabled_scope": "recommendation_only"
 }

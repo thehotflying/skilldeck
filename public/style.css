@@ -208,6 +208,14 @@ body {
   font-family: inherit; margin-bottom: 6px;
 }
 .set-input:focus { border-color: var(--accent2); }
+.model-policy, .model-warning {
+  margin: 14px 0; padding: 12px; border-radius: 10px; font-size: 12px; line-height: 1.65;
+}
+.model-policy { background: var(--panel2); border: 1px solid var(--line); color: var(--sub); }
+.model-policy strong { color: var(--text); display: block; margin-bottom: 4px; }
+.model-warning { background: color-mix(in srgb, var(--red) 15%, var(--panel)); border: 1px solid color-mix(in srgb, var(--red) 62%, var(--line)); color: var(--text); }
+.model-test-confirm { margin-top: 12px; }
+.model-test-actions { margin-top: 10px; }
 .modal-desc code { background: var(--code-bg); color: var(--code-text); padding: 1px 5px; border-radius: 5px; font-size: 12px; }
 .cm-list {
   max-height: 300px; overflow-y: auto; border: 1px solid var(--line);
