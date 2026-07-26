@@ -9,6 +9,7 @@ const path = require('path');
 const os = require('os');
 const { spawn, execSync } = require('child_process');
 const { URL } = require('url');
+const { loadGovernanceCatalog } = require('./governance-adapter');
 
 const PORT = process.env.PORT || 4177;
 const PUBLIC = path.join(__dirname, 'public');
@@ -347,6 +348,22 @@ const server = http.createServer(async (req, res) => {
       baseUrl: cfg.baseUrl,
       // 密钥永远不下发前端，只告知是否已配置
     });
+  }
+
+  // vNext governance snapshot: the only inventory endpoint used by the new UI.
+  // It reads the authoritative control center and never falls back to the old
+  // SkillDeck directory scanner.
+  if (p === '/api/governance') {
+    try {
+      return sendJson(res, 200, loadGovernanceCatalog());
+    } catch (e) {
+      return sendJson(res, 503, {
+        error: String(e.message || e),
+        evidence: 'unknown',
+        source_of_truth: 'skill-plugin-control-center',
+        safety: { read_only: true, old_skilldeck_inventory_disabled: true },
+      });
+    }
   }
 
   // 保存模型设置（写入本机 .skilldeck.local.json，不进仓库）

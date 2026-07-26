@@ -133,6 +133,11 @@ body {
 .cat:hover { color: var(--text); }
 .cat.active { background: var(--accent2); color: #fff; border-color: var(--accent2); }
 .count { margin-left: auto; color: var(--sub); font-size: 12px; }
+.governance-banner {
+  margin: 14px 20px 0; padding: 10px 12px; border: 1px solid var(--line);
+  border-radius: 9px; background: var(--panel2); color: var(--sub); font-size: 12px;
+}
+.governance-banner.error { border-color: var(--red); color: var(--red); }
 
 /* 卡片墙 */
 .grid {
@@ -152,6 +157,14 @@ body {
   border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px;
 }
 .card-desc { color: var(--sub); font-size: 12.5px; line-height: 1.6; flex: 1; }
+.card-governance { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.treatment { font-size: 10.5px; border-radius: 999px; padding: 3px 8px; border: 1px solid var(--line); }
+.treatment-ready { color: var(--accent); }
+.treatment-normal { color: #f59e0b; }
+.treatment-strong { color: var(--red); }
+.treatment-pending, .treatment-dedupe { color: var(--accent2); }
+.treatment-unknown { color: var(--sub); }
+.source-layer { font-size: 10.5px; color: var(--sub); }
 .card-foot { display: flex; align-items: center; justify-content: space-between; }
 .card-folder { font-size: 11px; color: #6b7280; font-family: ui-monospace, monospace; }
 .use-btn {

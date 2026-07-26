@@ -4,6 +4,7 @@ const state = {
   skills: [], filtered: [], cat: '全部', q: '',
   agents: [], current: null, prompt: '', es: null,
   experts: [], currentExpert: null, picked: new Set(), view: 'skills',
+  governance: null, legacyDir: '',
 };
 
 // ---------- 主题（深色/浅色）----------
@@ -28,7 +29,8 @@ function initTheme() {
 async function boot() {
   initTheme();
   const cfg = await fetch('/api/config').then((r) => r.json());
-  $('#dir').value = cfg.defaultDir || '';
+  state.legacyDir = cfg.defaultDir || '';
+  $('#dir').value = '治理中心统一库存（只读）';
   state.agents = cfg.agents || [];
   const sel = $('#agent');
   sel.innerHTML = state.agents.length
@@ -77,7 +79,8 @@ function switchView(v) {
 async function loadSkills() {
   const dir = $('#dir').value.trim();
   $('#count').textContent = '读取中…';
-  const data = await fetch('/api/skills?dir=' + encodeURIComponent(dir)).then((r) => r.json());
+  const data = await fetch('/api/governance').then((r) => r.json());
+  state.governance = data;
   if (data.error) {
     state.skills = [];
     $('#empty').style.display = 'block';
@@ -85,8 +88,13 @@ async function loadSkills() {
     $('#grid').innerHTML = '';
     $('#count').textContent = '';
     renderCats();
+    $('#governance-banner').textContent = `治理中心读取失败：${data.error}（未回退到旧目录库存）`;
+    $('#governance-banner').className = 'governance-banner error';
     return;
   }
+  $('#governance-banner').className = 'governance-banner';
+  const summary = data.summary || {};
+  $('#governance-banner').textContent = `治理中心唯一事实来源 · ${summary.skill_files || 0} 项 · 同名重复组 ${summary.duplicate_same_name_groups || 0} · 当前为只读浏览`;
   state.skills = data.skills || [];
   $('#empty').style.display = state.skills.length ? 'none' : 'block';
   if (!state.skills.length) $('#empty').textContent = '这个目录里没找到带 SKILL.md 的技能。';
@@ -122,18 +130,26 @@ function renderGrid() {
     <div class="card">
       <div class="card-top">
         <div class="card-name">${esc(s.name)}</div>
-        <span class="card-cat">${esc(s.category)}</span>
+        <span class="card-cat">${esc(s.category || '未分类')}</span>
       </div>
       <div class="card-desc">${esc(s.oneLine)}</div>
+      <div class="card-governance">
+        <span class="treatment treatment-${treatmentClass(s.treatment?.entry)}">${esc(s.treatment?.entry || '未纳入队列')}</span>
+        <span class="source-layer">${esc(s.source_layer || s.source || '')}</span>
+      </div>
       <div class="card-foot">
-        <span class="card-folder">${esc(s.folder)}</span>
-        <button class="use-btn" data-i="${i}">使用</button>
+        <span class="card-folder">${esc(s.relative_path || s.stable_id || s.folder)}</span>
+        <button class="use-btn" data-i="${i}">查看</button>
       </div>
     </div>`)
     .join('');
   document.querySelectorAll('.use-btn').forEach((el) =>
     el.addEventListener('click', () => openModal(state.filtered[+el.dataset.i]))
   );
+}
+
+function treatmentClass(entry) {
+  return ({ '可直接用': 'ready', '普通确认门': 'normal', '强确认门': 'strong', '待整理': 'pending', '去重处理': 'dedupe' })[entry] || 'unknown';
 }
 
 // ---------- Skill 使用弹窗 ----------
@@ -145,10 +161,16 @@ function openModal(skill) {
   state.current = skill;
   state.prompt = '';
   $('#m-name').textContent = skill.name;
-  $('#m-cat').textContent = skill.category;
+  $('#m-cat').textContent = `${skill.category || '未分类'} · ${skill.treatment?.entry || '未纳入队列'}`;
   $('#m-desc').textContent = skill.description;
   $('#m-task').value = '';
-  updatePrompt();
+  if (skill.stable_id) {
+    $('#m-cmd').textContent = `来源：${skill.source_layer || skill.source}\n稳定 ID：${skill.stable_id}\n当前仅可浏览治理信息；调用卡与执行门将在 P3/P5 验收后启用。`;
+    $('#m-cmd').hidden = false;
+    document.querySelectorAll('#m-task, .modal-mode, #m-copy, #m-run').forEach((el) => { el.hidden = true; });
+    $('.modal-label').hidden = true;
+    $('.modal-cmd-label').hidden = false;
+  } else updatePrompt();
   $('#modal').style.display = 'grid';
 }
 async function updatePrompt() {

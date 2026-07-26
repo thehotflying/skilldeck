@@ -33,10 +33,10 @@
     <div class="main-col">
       <header class="topbar">
         <div class="dir-box">
-          <button id="pick" class="btn">📁 浏览</button>
-          <input id="dir" class="dir-input" placeholder="本地 Skill 文件夹路径" />
+          <button id="pick" class="btn" disabled title="vNext 使用治理中心统一库存">📁 来源</button>
+          <input id="dir" class="dir-input" placeholder="治理中心统一库存（只读）" disabled />
           <select id="dir-history" class="dir-select" title="历史目录"></select>
-          <button id="load" class="btn primary">导入</button>
+          <button id="load" class="btn primary">刷新治理</button>
         </div>
         <div class="agent-box">
           <span class="agent-label">本地 Agent</span>
@@ -46,6 +46,7 @@
 
       <!-- 视图：Skill -->
       <section id="view-skills" class="view">
+        <div id="governance-banner" class="governance-banner" role="status"></div>
         <div class="toolbar">
           <input id="search" class="search" placeholder="搜索 Skill 名称或功能…" />
           <div id="cats" class="cats"></div>
