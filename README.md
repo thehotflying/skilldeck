@@ -35,6 +35,22 @@ node server.js
 
 如果以后要实际处理某个副本，必须针对具体操作卡确认，并先经过备份、最小范围执行、格式验证和新任务回归验证。
 
+## P9：一级直达功能栏
+
+左栏不再把治理功能收在一个总工作台内。现在可直接进入：
+
+1. Skill 总览；
+2. 健康与安全；
+3. 重复与合并；
+4. 创建与路由；
+5. 迁移与隔离；
+6. 专家组合；
+7. 模型与隐私。
+
+“优化、吸收、可回滚隔离”仍在具体 Skill 的详情中，因为操作必须先明确选中对象。模型设置已从弹窗改为独立页面；保存配置不联网，连通性测试和 AI 推荐仍需逐次确认。
+
+当前尚**不能**把多个既有 Skill 自动搬进一个新插件：页面能生成“合并 Skill”或“创建插件”的独立操作卡，但没有成员迁移与执行链路。
+
 ## P7：主题与 AI 推荐
 
 - 左下角的“深色 / 浅色”按钮可实际切换主题，并记住本机浏览器中的选择；
@@ -68,6 +84,7 @@ P5 中的 Codex widget 处于**安全模式**：不扫描本地目录、不读�
 node scripts/test-governance-adapter.js
 node scripts/test-governance-invocation-policy.js
 node scripts/test-governance-operations.js
+node scripts/test-direct-navigation.js
 node scripts/test-model-config.js
 python3 /Users/mac/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py .
 ```

@@ -1,6 +1,6 @@
 {
   "name": "skilldeck",
-  "version": "0.2.2+codex.20260727015924",
+  "version": "0.2.2+codex.20260727031753",
   "description": "SkillDeck \u2014\u2014 \u6280\u80fd\u7ba1\u7406\u4e2d\u5fc3\u7684\u53ef\u89c6\u5316\u524d\u53f0\uff1a\u7edf\u4e00\u5e93\u5b58\u3001\u98ce\u9669\u95e8\u63a7\u3001\u5b89\u5168\u8c03\u7528\u5361\u4e0e\u9010\u6b21\u786e\u8ba4\u7684 AI \u63a8\u8350\u3002",
   "author": {
     "name": "\u7a7a\u683c"

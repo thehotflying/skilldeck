@@ -56,6 +56,8 @@ body {
 }
 .sidebar .brand { padding: 6px 8px 20px; }
 .nav { display: flex; flex-direction: column; gap: 4px; }
+.nav-group-label { color: var(--sub); font-size: 10px; font-weight: 700; letter-spacing: .08em; padding: 13px 12px 3px; text-transform: uppercase; }
+.nav-group-label:first-child { padding-top: 0; }
 .nav-item {
   display: flex; align-items: center; gap: 10px; text-align: left;
   background: transparent; border: none; color: var(--sub);
@@ -294,6 +296,10 @@ body {
 .card-summary { border-left: 3px solid var(--accent2); padding: 8px 10px; color: var(--text); background: var(--code-bg); font-size: 12px; line-height: 1.6; }
 .invocation-note { font-size: 11px !important; }
 .expert-workbench { padding: 24px 20px 40px; max-width: 800px; }
+.model-workbench { padding: 24px 20px 44px; max-width: 720px; }
+.model-workbench > .modal-label { margin-top: 14px; }
+.model-workbench > .set-input { width: 100%; }
+.model-workbench > .model-policy { margin-bottom: 14px; }
 .expert-workbench h2 { font-size: 20px; margin-bottom: 8px; }
 .expert-workbench > div > p { color: var(--sub); font-size: 13px; line-height: 1.6; }
 .expert-members { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0; min-height: 32px; }

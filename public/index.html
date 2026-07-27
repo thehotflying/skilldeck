@@ -18,13 +18,19 @@
           <div class="brand-sub">技控台</div>
         </div>
       </div>
-      <nav class="nav">
-        <button class="nav-item active" data-view="skills"><span class="nav-ico">🎴</span> Skill</button>
-        <button id="governance-tab" class="nav-item" type="button"><span class="nav-ico">🛡️</span> 治理工作台</button>
-        <button id="experts-tab" class="nav-item" type="button"><span class="nav-ico">🧠</span> 专家组合 <span id="expert-selected-count"></span></button>
+      <nav class="nav" aria-label="技能管理中心功能">
+        <div class="nav-group-label">技能库</div>
+        <button class="nav-item active" data-view="skills" type="button"><span class="nav-ico">🎴</span> Skill 总览</button>
+        <div class="nav-group-label">治理</div>
+        <button class="nav-item" data-view="health" type="button"><span class="nav-ico">🩺</span> 健康与安全</button>
+        <button class="nav-item" data-view="duplicates" type="button"><span class="nav-ico">🔁</span> 重复与合并</button>
+        <button class="nav-item" data-view="creation" type="button"><span class="nav-ico">✨</span> 创建与路由</button>
+        <button class="nav-item" data-view="migration" type="button"><span class="nav-ico">♻️</span> 迁移与隔离</button>
+        <div class="nav-group-label">工作方式</div>
+        <button class="nav-item" data-view="experts" type="button"><span class="nav-ico">🧠</span> 专家组合 <span id="expert-selected-count"></span></button>
+        <button class="nav-item" data-view="model" type="button"><span class="nav-ico">⚙️</span> 模型与隐私</button>
       </nav>
       <div class="sidebar-foot">
-        <button id="set-open" class="theme-toggle" type="button">⚙️ 模型与隐私设置</button>
         <button id="theme-toggle" class="theme-toggle"><span id="theme-ico">🌙</span> <span id="theme-label">深色</span></button>
         <span id="llm-badge" class="llm-badge"></span>
       </div>
@@ -35,8 +41,8 @@
       <header class="topbar">
         <div class="governance-title">
           <span class="agent-label">数据来源</span>
-          <strong>技能管理中心统一库存</strong>
-          <span class="topbar-note">P4 安全调用卡：不扫描任意目录、不注入正文、不执行本地命令</span>
+          <strong id="workspace-title">Skill 总览</strong>
+          <span id="workspace-note" class="topbar-note">查看统一库存与单项治理信息</span>
         </div>
         <button id="ai-open" class="btn ghost" type="button">✨ AI 推荐</button>
         <button id="refresh" class="btn primary" type="button">刷新治理结果</button>
@@ -58,9 +64,33 @@
       <!-- P8：所有项目由原技能管理中心生成；这里只显示只读治理信息与操作卡。 -->
       <section id="view-governance" class="view" hidden>
         <div class="governance-workbench">
-          <div class="workbench-title"><div><h2>治理工作台</h2><p>盘点、检查、比较、吸收、合并、优化、隔离和创建都来自技能管理中心。这里先生成可确认、可回滚的操作卡，不直接修改技能库。</p></div><button id="governance-refresh" class="btn primary" type="button">刷新治理工作台</button></div>
+          <div class="workbench-title"><div><h2 id="governance-page-title">健康与安全</h2><p id="governance-page-note">每个左栏入口直接显示对应功能；所有治理操作均只生成可确认、可回滚的操作卡。</p></div><button id="governance-refresh" class="btn primary" type="button">刷新本页数据</button></div>
           <div id="governance-status" class="workbench-status">尚未读取治理数据。</div>
           <div id="governance-dashboard" class="governance-dashboard"></div>
+        </div>
+      </section>
+
+      <!-- 模型设置是独立页面；保存设置不会发起外部请求，测试与推荐均需逐次确认。 -->
+      <section id="view-model" class="view" hidden>
+        <div class="model-workbench">
+          <div class="workbench-title"><div><h2>模型与隐私</h2><p>用于配置可选的模型推荐服务；未配置时，浏览、治理和调用卡仍可离线使用。</p></div></div>
+          <div class="model-policy">
+            <strong>离线优先，模型不可绕过治理。</strong>
+            <p>默认只可用于分类、推荐和摘要；不会自动发送完整 SKILL.md、内部路径、住民/员工/机构资料。真正调用外部模型时，将逐次显示外发范围并等待确认。</p>
+          </div>
+          <div id="set-legacy-warning" class="model-warning" hidden></div>
+          <label class="modal-label">服务标识</label>
+          <input id="set-provider" class="set-input" placeholder="例如：openai-compatible" />
+          <label class="modal-label">API URL</label>
+          <input id="set-url" class="set-input" placeholder="https://api.example.com/v1" />
+          <label class="modal-label">模型名称</label>
+          <input id="set-model" class="set-input" placeholder="例如：gpt-4.1-mini" />
+          <label class="modal-label">API Key（只存入 macOS 钥匙串）</label>
+          <input id="set-key" class="set-input" type="password" autocomplete="new-password" placeholder="留空则不改已有密钥" />
+          <div id="set-hint" class="cmd-chars">未配置模型；所有浏览、治理与调用卡均可离线使用。</div>
+          <div class="modal-actions"><button class="btn primary" id="set-save" type="button">保存本地设置</button></div>
+          <label class="confirm-wrap model-test-confirm"><input id="set-test-confirm" type="checkbox"> 我确认现在只访问上述模型提供商进行连通性测试；不发送任何 Skill 或机构资料。</label>
+          <div class="modal-actions model-test-actions"><button class="btn ghost" id="set-test" type="button">测试连接（不发送 Skill 数据）</button></div>
         </div>
       </section>
 
@@ -171,36 +201,6 @@
         <button class="btn ghost" id="cm-cancel">取消</button>
         <button class="btn primary" id="cm-save">保存专家</button>
       </div>
-    </div>
-  </div>
-
-  <!-- P5：模型设置仅保存最小元数据；密钥只写入 macOS 钥匙串。 -->
-  <div id="set-modal" class="modal-mask" style="display:none">
-    <div class="modal">
-      <div class="modal-head">
-        <div class="modal-skill">⚙️ 模型与隐私设置</div>
-        <button class="modal-x" id="set-close">×</button>
-      </div>
-      <div class="model-policy">
-        <strong>离线优先，模型不可绕过治理。</strong>
-        <p>默认只可用于分类、推荐和摘要；不会自动发送完整 SKILL.md、内部路径、住民/员工/机构资料。真正调用外部模型时，将逐次显示外发范围并等待确认。</p>
-      </div>
-      <div id="set-legacy-warning" class="model-warning" hidden></div>
-      <label class="modal-label">服务标识</label>
-      <input id="set-provider" class="set-input" placeholder="例如：openai-compatible" />
-      <label class="modal-label">API URL</label>
-      <input id="set-url" class="set-input" placeholder="https://api.example.com/v1" />
-      <label class="modal-label">模型名称</label>
-      <input id="set-model" class="set-input" placeholder="例如：gpt-4.1-mini" />
-      <label class="modal-label">API Key（只存入 macOS 钥匙串）</label>
-      <input id="set-key" class="set-input" type="password" autocomplete="new-password" placeholder="留空则不改已有密钥" />
-      <div id="set-hint" class="cmd-chars">未配置模型；所有浏览、治理与调用卡均可离线使用。</div>
-      <div class="modal-actions">
-        <button class="btn ghost" id="set-cancel" type="button">取消</button>
-        <button class="btn primary" id="set-save" type="button">保存本地设置</button>
-      </div>
-      <label class="confirm-wrap model-test-confirm"><input id="set-test-confirm" type="checkbox"> 我确认现在只访问上述模型提供商进行连通性测试；不发送任何 Skill 或机构资料。</label>
-      <div class="modal-actions model-test-actions"><button class="btn ghost" id="set-test" type="button">测试连接（不发送 Skill 数据）</button></div>
     </div>
   </div>
 
