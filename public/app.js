@@ -1,7 +1,7 @@
 const $ = (s) => document.querySelector(s);
 const state = { skills: [], filtered: [], category: 'all', treatment: 'all', query: '', catalog: null, current: null, expertIds: [], view: 'skills' };
 const LABEL = { pending: '待整理', dedupe: '去重处理', 'normal-gate': '普通确认门', 'strong-gate': '强确认门', ready: '可直接用', unknown: '待核验' };
-const esc = (v) => String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const esc = (v) => String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 function theme(value) {
   document.documentElement.dataset.theme = value;
@@ -20,6 +20,11 @@ function setup() {
   $('#m-cancel').addEventListener('click', closeModal);
   $('#m-generate').addEventListener('click', () => requestSkillCard());
   $('#m-add-expert').addEventListener('click', addCurrentToExpert);
+  $('#m-evolve').addEventListener('click', () => requestGovernancePlan('evolve'));
+  $('#m-absorb').addEventListener('click', () => requestGovernancePlan('absorb'));
+  $('#m-quarantine').addEventListener('click', () => requestGovernancePlan('quarantine'));
+  $('#governance-tab').addEventListener('click', () => switchView('governance'));
+  $('#governance-refresh').addEventListener('click', loadGovernanceDashboard);
   $('#experts-tab').addEventListener('click', () => switchView('experts'));
   document.querySelector('[data-view="skills"]').addEventListener('click', () => switchView('skills'));
   $('#expert-generate').addEventListener('click', requestExpertCard);
@@ -32,14 +37,19 @@ function setup() {
   $('#ai-close').addEventListener('click', closeAiRecommendation);
   $('#ai-cancel').addEventListener('click', closeAiRecommendation);
   $('#ai-generate').addEventListener('click', generateAiRecommendation);
+  $('#gc-close').addEventListener('click', closeGovernanceCreate);
+  $('#gc-cancel').addEventListener('click', closeGovernanceCreate);
+  $('#gc-generate').addEventListener('click', generateGovernanceCreateCard);
 }
 
 function switchView(view) {
   state.view = view;
   $('#view-skills').hidden = view !== 'skills';
+  $('#view-governance').hidden = view !== 'governance';
   $('#view-experts').hidden = view !== 'experts';
-  document.querySelectorAll('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.view === view || (item.id === 'experts-tab' && view === 'experts')));
+  document.querySelectorAll('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.view === view || (item.id === 'experts-tab' && view === 'experts') || (item.id === 'governance-tab' && view === 'governance')));
   if (view === 'experts') renderExpertWorkbench();
+  if (view === 'governance') loadGovernanceDashboard();
 }
 
 function loadCatalog() {
@@ -128,6 +138,10 @@ function openDetail(s) {
   $('#m-confirm-wrap').hidden = entry !== 'normal-gate';
   $('#m-card').hidden = true;
   $('#m-card').innerHTML = '';
+  const manageable = !s.is_system && s.source !== 'personal-plugin-cache';
+  $('#m-governance-actions').hidden = !manageable;
+  $('#m-management-card').hidden = true;
+  $('#m-management-card').innerHTML = '';
   $('#m-generate').textContent = entry === 'strong-gate' || entry === 'pending' || entry === 'dedupe' ? '生成操作卡' : '生成调用卡';
   $('#m-add-expert').textContent = state.expertIds.includes(s.stable_id) ? '已加入专家组合' : '加入专家组合';
   $('#modal').style.display = 'grid';
@@ -152,6 +166,129 @@ function requestSkillCard() {
     .then((card) => renderInvocationCard($('#m-card'), card))
     .catch((e) => toast(e.message || '生成失败'))
     .finally(() => { $('#m-generate').disabled = false; });
+}
+
+function governanceCardHtml(card) {
+  const selected = (card.selected || card.members || card.targets || []).map((item) => item.name || item.stable_id || item.id).filter(Boolean);
+  const title = card.command === 'compare' ? '差异比较结果' : (card.action === 'quarantine' ? '可回滚隔离操作卡' : `治理操作卡：${card.action || '创建'}`);
+  const result = card.command === 'compare'
+    ? `比较结论：${card.result === 'identical' ? '内容 SHA 相同，可作为低风险隔离候选继续人工复核。' : '存在差异或资料不完整，不能自动合并。'}`
+    : (card.confirmation_required || '本次只生成计划，未执行任何文件操作。');
+  const facts = [
+    card.plan_id ? `计划 ID：${card.plan_id}` : null,
+    card.status ? `状态：${card.status === 'not_executed' ? '未执行' : card.status}` : null,
+    selected.length ? `对象：${selected.join('、')}` : null,
+    card.minimum_scope ? `最小范围：${card.minimum_scope}` : null,
+    card.backup ? `备份：${card.backup}` : null,
+    card.validation ? `验证：${card.validation}` : null,
+    card.rollback ? `回滚：${card.rollback}` : null,
+    card.router_note || null,
+  ].filter(Boolean);
+  return `<div class="invocation-head"><strong>${esc(title)}</strong><span class="gov-badge gov-unknown">未执行</span></div><p>${esc(result)}</p><ul>${facts.map((fact) => `<li>${esc(fact)}</li>`).join('')}</ul><p class="invocation-note">未写入技能库、未移动文件、未安装插件、未连接外部服务。下一步必须确认这张计划卡的具体 ID。</p>`;
+}
+
+function renderGovernanceCard(container, card) {
+  container.innerHTML = governanceCardHtml(card);
+  container.hidden = false;
+}
+
+function requestGovernancePlan(action) {
+  if (!state.current) return;
+  const container = $('#m-management-card');
+  container.hidden = false;
+  container.textContent = '正在从技能管理中心生成操作卡…';
+  requestCard('/api/governance-operation-card', { action, ids: [state.current.stable_id] })
+    .then((card) => renderGovernanceCard(container, card))
+    .catch((error) => { container.textContent = error.message || '无法生成治理操作卡。'; });
+}
+
+function loadGovernanceDashboard() {
+  $('#governance-status').textContent = '正在从技能管理中心读取健康、重复与迁移信息…';
+  fetch('/api/governance-dashboard')
+    .then((res) => res.json().then((data) => ({ res, data })))
+    .then(({ res, data }) => {
+      if (!res.ok || data.error) throw new Error(data.error || '治理中心读取失败');
+      renderGovernanceDashboard(data);
+      $('#governance-status').textContent = `已读取当前治理数据：${data.summary?.skill_count || 0} 个 Skill；所有操作仍为只读操作卡。`;
+    })
+    .catch((error) => { $('#governance-status').textContent = error.message || '治理中心当前不可读取。'; $('#governance-dashboard').innerHTML = ''; });
+}
+
+function duplicateGroupHtml(group, index) {
+  const members = (group.members || []).filter((member) => member.id && member.name);
+  if (members.length < 2) return '';
+  const optionHtml = members.map((member) => `<option value="${esc(member.id)}">${esc(member.name)} · ${esc(member.relative_path || member.source || '')}</option>`).join('');
+  const key = `dup-${index}`;
+  return `<article class="duplicate-item"><div class="duplicate-head"><strong>${esc(members[0].name)} 等 ${members.length} 份副本</strong><span class="source-badge">${esc(group.kind || '重复组')}</span></div><div class="duplicate-members">${members.map((member) => `<div class="duplicate-member"><span>${esc(member.name)} · ${esc(member.source || '未知来源')}</span><code>${esc(member.id)}</code></div>`).join('')}</div><div class="governance-actions"><select id="${key}-a" class="dir-select">${optionHtml}</select><select id="${key}-b" class="dir-select">${members.map((member, memberIndex) => `<option value="${esc(member.id)}" ${memberIndex === 1 ? 'selected' : ''}>${esc(member.name)} · ${esc(member.relative_path || member.source || '')}</option>`).join('')}</select><button class="btn ghost" data-compare="${key}" type="button">比较差异</button><button class="btn danger" data-merge="${key}" type="button">生成合并操作卡</button></div><div id="${key}-card" class="governance-card" hidden></div></article>`;
+}
+
+function renderGovernanceDashboard(data) {
+  const findings = data.audit?.finding_count ?? 0;
+  const namedGroups = data.duplicates?.same_name || [];
+  const identicalGroups = data.duplicates?.same_sha256 || [];
+  const components = data.components?.components || [];
+  const legacy = data.legacy || {};
+  const componentHtml = components.map((item) => `<li><strong>${esc(item.name)}</strong>：${esc(item.purpose || '')}</li>`).join('');
+  const duplicateHtml = namedGroups.map((group, index) => duplicateGroupHtml({ ...group, kind: '同名重复' }, index)).join('') || '<p>当前未发现同名重复组。</p>';
+  const legacyHtml = (legacy.items || []).map((item) => `<li><strong>${esc(item.legacy_skill)}</strong> → ${esc(item.replacement_component)}（${esc(item.disposition)}）</li>`).join('');
+  $('#governance-dashboard').innerHTML = `
+    <section class="governance-section"><h3>健康与安全</h3><p>当前静态检查发现 ${esc(findings)} 项问题或风险线索。这是文件结构线索，不等同于真实运行行为。</p><div class="governance-actions"><button id="gov-show-audit" class="btn ghost" type="button">查看健康检查摘要</button></div><div id="gov-audit-card" class="governance-card" hidden></div></section>
+    <section class="governance-section"><h3>创建与路由</h3><p>先生成冲突检查和官方创建器委托卡；普通 Skill、调用其他 Skill 的路由 Skill、Skills-only 插件均不会在本页直接创建。</p><div class="governance-actions"><button class="btn primary" data-create-kind="skill" type="button">创建普通 Skill</button><button class="btn ghost" data-create-kind="router" type="button">创建调用其他 Skill 的 Skill</button><button class="btn ghost" data-create-kind="plugin" type="button">创建插件</button></div></section>
+    <section class="governance-section"><h3>重复差异与合并</h3><p>同名重复组 ${namedGroups.length} 个；完全相同内容组 ${identicalGroups.length} 个。合并前必须先选定两份副本；页面只生成操作卡。</p><div class="duplicate-list">${duplicateHtml}</div></section>
+    <section class="governance-section"><h3>已吸收的管理能力</h3><p>原中心共登记 ${components.length} 项内部治理组件。旧管理 Skill 的迁移清单共 ${legacy.total || 0} 项；只有确认具体计划后才可进入可回滚隔离。</p><ul>${componentHtml}</ul><div class="governance-actions"><button id="gov-legacy-plan" class="btn danger" type="button">生成旧管理入口隔离卡</button></div><div id="gov-legacy-card" class="governance-card" hidden></div><ul>${legacyHtml}</ul></section>`;
+  $('#gov-show-audit').addEventListener('click', () => {
+    const container = $('#gov-audit-card');
+    const samples = (data.audit?.findings || []).slice(0, 12).map((finding) => finding.message || finding.issue || finding.id || JSON.stringify(finding));
+    container.innerHTML = `<div class="invocation-head"><strong>健康检查摘要</strong><span class="gov-badge gov-unknown">只读</span></div><p>发现 ${esc(findings)} 项静态问题或风险线索。</p><ul>${samples.length ? samples.map((sample) => `<li>${esc(sample)}</li>`).join('') : '<li>没有可展示的摘要项。</li>'}</ul><p class="invocation-note">请先根据单项详情生成优化操作卡；本页不会自动修复。</p>`;
+    container.hidden = false;
+  });
+  document.querySelectorAll('[data-create-kind]').forEach((button) => button.addEventListener('click', () => openGovernanceCreate(button.dataset.createKind)));
+  document.querySelectorAll('[data-compare]').forEach((button) => button.addEventListener('click', () => requestDuplicateAction(button.dataset.compare, 'compare')));
+  document.querySelectorAll('[data-merge]').forEach((button) => button.addEventListener('click', () => requestDuplicateAction(button.dataset.merge, 'merge')));
+  $('#gov-legacy-plan').addEventListener('click', () => {
+    const container = $('#gov-legacy-card'); container.hidden = false; container.textContent = '正在生成旧管理入口隔离卡…';
+    requestCard('/api/governance-operation-card', { action: 'legacy-quarantine' }).then((card) => renderGovernanceCard(container, card)).catch((error) => { container.textContent = error.message || '无法生成隔离卡。'; });
+  });
+}
+
+function requestDuplicateAction(key, action) {
+  const first = $(`#${key}-a`).value;
+  const second = $(`#${key}-b`).value;
+  const container = $(`#${key}-card`);
+  if (!first || !second || first === second) { container.hidden = false; container.textContent = '请选择两份不同的 Skill 副本。'; return; }
+  container.hidden = false; container.textContent = action === 'compare' ? '正在比较差异…' : '正在生成合并操作卡…';
+  const endpoint = action === 'compare' ? '/api/governance-compare' : '/api/governance-operation-card';
+  const body = action === 'compare' ? { ids: [first, second] } : { action: 'merge', ids: [first, second] };
+  requestCard(endpoint, body).then((card) => renderGovernanceCard(container, card)).catch((error) => { container.textContent = error.message || '无法生成治理结果。'; });
+}
+
+function openGovernanceCreate(kind) {
+  state.createKind = kind;
+  const router = kind === 'router';
+  const plugin = kind === 'plugin';
+  $('#gc-title').textContent = router ? '创建调用其他 Skill 的 Skill' : (plugin ? '创建插件' : '创建普通 Skill');
+  $('#gc-kind-note').textContent = router ? '最终会创建普通 Skill；其内容将承担技能组合与路由职责。' : (plugin ? '固定为 Skills-only 插件，最终委托官方 plugin-creator。' : '最终委托官方 skill-creator。');
+  $('#gc-trigger-label').hidden = plugin;
+  $('#gc-triggers').hidden = plugin;
+  $('#gc-name').value = ''; $('#gc-purpose').value = ''; $('#gc-triggers').value = '';
+  $('#gc-status').textContent = '未创建任何文件。'; $('#gc-card').hidden = true; $('#gc-card').innerHTML = '';
+  $('#governance-create-modal').style.display = 'grid';
+}
+
+function closeGovernanceCreate() { $('#governance-create-modal').style.display = 'none'; }
+
+function generateGovernanceCreateCard() {
+  const router = state.createKind === 'router';
+  const kind = state.createKind === 'plugin' ? 'plugin' : 'skill';
+  const name = $('#gc-name').value.trim();
+  const purpose = $('#gc-purpose').value.trim();
+  if (!name || !purpose) { $('#gc-status').textContent = '请填写英文短横线名称和用途。'; return; }
+  const triggers = $('#gc-triggers').value.split(/[,，]/).map((item) => item.trim()).filter(Boolean);
+  $('#gc-generate').disabled = true; $('#gc-status').textContent = '正在进行名称冲突与目标范围预检…';
+  requestCard('/api/governance-create-card', { kind, name, purpose, triggers, router })
+    .then((card) => { renderGovernanceCard($('#gc-card'), card); $('#gc-status').textContent = '已生成创建操作卡；尚未创建任何文件。'; })
+    .catch((error) => { $('#gc-status').textContent = error.message || '无法生成创建操作卡。'; })
+    .finally(() => { $('#gc-generate').disabled = false; });
 }
 
 function copyText(text) {

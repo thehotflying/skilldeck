@@ -9,6 +9,7 @@ const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { URL } = require('node:url');
 const { loadGovernanceCatalog } = require('./governance-adapter');
+const { planOperation, compareSkills, creationCard, legacyQuarantineCard, dashboard } = require('./governance-operations');
 const { buildInvocationCard } = require('./governance-invocation-policy');
 const { KEYCHAIN_SERVICE, CONFIG_FILE, DEFAULT_CONFIG, normalizeMetadata, configStatus } = require('./model-config');
 const { MAX_TASK_LENGTH, selectCandidates, buildRecommendationMessages, parseRecommendation } = require('./model-recommendation');
@@ -112,6 +113,41 @@ const server = http.createServer(async (req, res) => {
   if (p === '/api/governance' && req.method === 'GET') {
     try { return sendJson(res, 200, loadGovernanceCatalog()); }
     catch (error) { return governanceUnavailable(res, error); }
+  }
+
+  // P8: these endpoints expose the existing governance center's planning cards.
+  // They accept no paths and never execute, edit, move, install, or delete anything.
+  if (p === '/api/governance-dashboard' && req.method === 'GET') {
+    try { return sendJson(res, 200, dashboard()); }
+    catch (error) { return governanceUnavailable(res, error); }
+  }
+
+  if (p === '/api/governance-compare' && req.method === 'POST') {
+    const body = await readBody(req);
+    if (body.__tooLarge) return sendJson(res, 413, { error: '请求内容过大。', local_execution_started: false, not_executed: true });
+    try { return sendJson(res, 200, compareSkills({ ids: body.ids })); }
+    catch (error) { return sendJson(res, 400, { error: error.message || '无法生成差异比较。', local_execution_started: false, not_executed: true }); }
+  }
+
+  if (p === '/api/governance-operation-card' && req.method === 'POST') {
+    const body = await readBody(req);
+    if (body.__tooLarge) return sendJson(res, 413, { error: '请求内容过大。', local_execution_started: false, not_executed: true });
+    try {
+      return sendJson(res, 200, body.action === 'legacy-quarantine'
+        ? legacyQuarantineCard()
+        : planOperation({ action: body.action, ids: body.ids }));
+    }
+    catch (error) { return sendJson(res, 400, { error: error.message || '无法生成治理操作卡。', local_execution_started: false, not_executed: true }); }
+  }
+
+  if (p === '/api/governance-create-card' && req.method === 'POST') {
+    const body = await readBody(req);
+    if (body.__tooLarge) return sendJson(res, 413, { error: '请求内容过大。', local_execution_started: false, not_executed: true });
+    try {
+      return sendJson(res, 200, creationCard({ kind: body.kind, name: body.name, purpose: body.purpose, triggers: body.triggers, router: body.router === true }));
+    } catch (error) {
+      return sendJson(res, 400, { error: error.message || '无法生成创建操作卡。', local_execution_started: false, not_executed: true });
+    }
   }
 
   // P4: cards never execute a Skill, disclose an absolute path, or persist a confirmation.

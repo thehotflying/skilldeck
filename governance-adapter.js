@@ -57,6 +57,7 @@ function normalize(record, duplicateGroups) {
     category: treatment.category || '未分类',
     source: record.source,
     source_layer: SOURCE_LAYERS[record.source] || '未知来源',
+    is_system: Boolean(record.is_system),
     relative_path: record.relative_path,
     absolute_path: null,
     path_visibility: 'backend_only',
@@ -122,4 +123,4 @@ function loadGovernanceCatalog() {
   };
 }
 
-module.exports = { CONTROL_CENTER_SCRIPT, loadGovernanceCatalog, normalize };
+module.exports = { CONTROL_CENTER_SCRIPT, runControlCenter, loadGovernanceCatalog, normalize };

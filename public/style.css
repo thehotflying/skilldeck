@@ -302,11 +302,40 @@ body {
 .expert-empty { border: 1px dashed var(--line); border-radius: 10px; padding: 16px; color: var(--sub); font-size: 12px; width: 100%; }
 .expert-status { margin: 12px 0 16px; color: var(--sub); font-size: 13px; line-height: 1.6; }
 
+/* P8 治理工作台 */
+.governance-workbench { padding: 24px 20px 44px; max-width: 1120px; }
+.workbench-title { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
+.workbench-title h2 { font-size: 20px; margin-bottom: 7px; }
+.workbench-title p, .workbench-status { color: var(--sub); font-size: 13px; line-height: 1.65; }
+.workbench-status { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--panel2); margin-bottom: 14px; }
+.governance-dashboard { display: grid; gap: 14px; }
+.governance-section { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.governance-section h3 { font-size: 15px; margin-bottom: 6px; }
+.governance-section > p { color: var(--sub); font-size: 12px; line-height: 1.6; margin-bottom: 12px; }
+.governance-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.governance-card { margin-top: 13px; padding: 13px; border: 1px solid var(--accent2); border-radius: 11px; background: var(--panel2); color: var(--text); }
+.governance-card p { color: var(--sub); font-size: 12px; line-height: 1.65; margin: 8px 0; }
+.governance-card ul { margin: 8px 0 0 18px; color: var(--sub); font-size: 12px; line-height: 1.6; }
+.duplicate-list { display: grid; gap: 9px; max-height: 480px; overflow-y: auto; }
+.duplicate-item { border: 1px solid var(--line); border-radius: 10px; padding: 11px; background: var(--panel2); }
+.duplicate-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.duplicate-members { display: grid; gap: 6px; margin: 10px 0; }
+.duplicate-member { display: flex; align-items: center; justify-content: space-between; gap: 9px; font-size: 12px; color: var(--sub); }
+.duplicate-member code { color: var(--code-text); background: var(--code-bg); border-radius: 5px; padding: 2px 5px; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.management-actions { margin-top: 15px; padding-top: 14px; border-top: 1px solid var(--line); }
+.management-actions > div:first-child p { margin: 5px 0 10px; color: var(--sub); font-size: 12px; line-height: 1.55; }
+.management-action-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn.danger { color: var(--red); border-color: color-mix(in srgb, var(--red) 55%, var(--line)); }
+.btn.danger:hover { background: color-mix(in srgb, var(--red) 11%, var(--panel2)); }
+
 @media (max-width: 720px) {
   .governance-title { display: block; }
   .governance-title > * { display: block; margin: 2px 0; }
   .topbar-note { white-space: normal; }
   .ai-mode-group { grid-template-columns: 1fr; }
+  .workbench-title { display: grid; }
+  .duplicate-member { align-items: flex-start; flex-direction: column; }
+  .duplicate-member code { max-width: 100%; }
 }
 
 /* toast */

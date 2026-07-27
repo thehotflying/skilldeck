@@ -23,6 +23,18 @@ node server.js
 5. 为强确认门、待整理或去重项生成操作卡；
 6. 建立仅在当前页面有效的临时专家组合；组合继承成员中的最高风险等级。
 
+## P8：治理工作台与处置操作卡
+
+“治理工作台”把原技能管理中心的能力放进可视化界面，但仍由原治理中心提供唯一事实来源：
+
+- 实时展示健康检查摘要、重复 Skill 组、组件清单和旧管理入口清单；
+- 可以查看两个副本的差异，并生成“吸收、合并、优化、可回滚隔离”的操作卡；
+- 可以生成“创建普通 Skill、创建调用其他 Skill 的路由 Skill、创建插件”的官方委托卡；
+- 每张卡都会明确显示影响、验证、回滚和下一步；它们**不会**在本轮移动、删除、合并、创建或修改任何 Skill 文件；
+- “删除”统一称为“可回滚隔离”。永久删除、批量合并、自动同步和一键执行不在当前版本授权范围内。
+
+如果以后要实际处理某个副本，必须针对具体操作卡确认，并先经过备份、最小范围执行、格式验证和新任务回归验证。
+
 ## P7：主题与 AI 推荐
 
 - 左下角的“深色 / 浅色”按钮可实际切换主题，并记住本机浏览器中的选择；
@@ -55,6 +67,7 @@ P5 中的 Codex widget 处于**安全模式**：不扫描本地目录、不读�
 ```bash
 node scripts/test-governance-adapter.js
 node scripts/test-governance-invocation-policy.js
+node scripts/test-governance-operations.js
 node scripts/test-model-config.js
 python3 /Users/mac/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py .
 ```

@@ -20,6 +20,7 @@
       </div>
       <nav class="nav">
         <button class="nav-item active" data-view="skills"><span class="nav-ico">🎴</span> Skill</button>
+        <button id="governance-tab" class="nav-item" type="button"><span class="nav-ico">🛡️</span> 治理工作台</button>
         <button id="experts-tab" class="nav-item" type="button"><span class="nav-ico">🧠</span> 专家组合 <span id="expert-selected-count"></span></button>
       </nav>
       <div class="sidebar-foot">
@@ -54,6 +55,15 @@
         <div id="empty" class="empty" style="display:none"></div>
       </section>
 
+      <!-- P8：所有项目由原技能管理中心生成；这里只显示只读治理信息与操作卡。 -->
+      <section id="view-governance" class="view" hidden>
+        <div class="governance-workbench">
+          <div class="workbench-title"><div><h2>治理工作台</h2><p>盘点、检查、比较、吸收、合并、优化、隔离和创建都来自技能管理中心。这里先生成可确认、可回滚的操作卡，不直接修改技能库。</p></div><button id="governance-refresh" class="btn primary" type="button">刷新治理工作台</button></div>
+          <div id="governance-status" class="workbench-status">尚未读取治理数据。</div>
+          <div id="governance-dashboard" class="governance-dashboard"></div>
+        </div>
+      </section>
+
       <!-- P4：临时专家组合。成员与任务仅在当前页面内存在，不调用旧专家接口。 -->
       <section id="view-experts" class="view" hidden>
         <div class="expert-workbench">
@@ -86,11 +96,37 @@
       <textarea id="m-task" class="modal-task" placeholder="例如：先给我一份草稿和建议，不要直接写入文件"></textarea>
       <label id="m-confirm-wrap" class="confirm-wrap" hidden><input id="m-confirm" type="checkbox"> 我确认仅为上述最小范围生成调用指令；真正执行风险动作时仍需再次确认。</label>
       <div id="m-card" class="invocation-card" hidden></div>
+      <section id="m-governance-actions" class="management-actions" hidden>
+        <div><strong>技能治理</strong><p>以下按钮只生成计划卡。不会删除、移动、合并、优化或创建文件。</p></div>
+        <div class="management-action-buttons">
+          <button id="m-evolve" class="btn ghost" type="button">优化技能</button>
+          <button id="m-absorb" class="btn ghost" type="button">吸收规划</button>
+          <button id="m-quarantine" class="btn danger" type="button">可回滚隔离</button>
+        </div>
+        <div id="m-management-card" class="governance-card" hidden></div>
+      </section>
       <div class="modal-actions">
         <button class="btn ghost" id="m-add-expert" type="button">加入专家组合</button>
         <button class="btn primary" id="m-generate" type="button">生成调用/操作卡</button>
         <button class="btn ghost" id="m-cancel" type="button">关闭</button>
       </div>
+    </div>
+  </div>
+
+  <!-- P8：普通 Skill、路由 Skill 与 Skills-only 插件都只生成官方创建器的委托卡。 -->
+  <div id="governance-create-modal" class="modal-mask" style="display:none">
+    <div class="modal">
+      <div class="modal-head"><div><div class="modal-skill" id="gc-title">创建治理操作卡</div><div class="modal-cat" id="gc-kind-note"></div></div><button class="modal-x" id="gc-close" type="button">×</button></div>
+      <div class="model-policy"><strong>先预检，后确认，再委托官方创建器。</strong><p>本页不会创建文件。名称冲突、目标路径和官方委托方式都会写进操作卡。</p></div>
+      <label class="modal-label" for="gc-name">英文短横线名称</label>
+      <input id="gc-name" class="set-input" placeholder="例如：weekly-review" />
+      <label class="modal-label" for="gc-purpose">用途</label>
+      <textarea id="gc-purpose" class="modal-task" placeholder="说明它要解决什么问题，以及默认不做什么。"></textarea>
+      <label id="gc-trigger-label" class="modal-label" for="gc-triggers">触发词（可选，最多三个，以逗号分隔）</label>
+      <input id="gc-triggers" class="set-input" placeholder="例如：周复盘, weekly review" />
+      <div class="modal-actions"><button id="gc-cancel" class="btn ghost" type="button">取消</button><button id="gc-generate" class="btn primary" type="button">生成创建操作卡</button></div>
+      <div id="gc-status" class="cmd-chars"></div>
+      <div id="gc-card" class="governance-card" hidden></div>
     </div>
   </div>
 
