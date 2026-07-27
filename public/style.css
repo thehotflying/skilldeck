@@ -216,6 +216,18 @@ body {
 .model-warning { background: color-mix(in srgb, var(--red) 15%, var(--panel)); border: 1px solid color-mix(in srgb, var(--red) 62%, var(--line)); color: var(--text); }
 .model-test-confirm { margin-top: 12px; }
 .model-test-actions { margin-top: 10px; }
+.ai-modal { max-width: 680px; }
+.ai-mode-group { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ai-result { margin-top: 16px; display: grid; gap: 10px; }
+.ai-summary, .ai-reason { color: var(--sub); font-size: 12px; line-height: 1.65; }
+.ai-summary { padding: 11px 12px; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; }
+.ai-item, .ai-expert { padding: 13px; background: var(--panel2); border: 1px solid var(--line); border-radius: 11px; }
+.ai-item > div { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.ai-item strong { font-size: 13px; }
+.ai-item p { margin: 7px 0; font-size: 12px; line-height: 1.55; }
+.ai-open-skill { margin-top: 4px; }
+.ai-expert { border-color: color-mix(in srgb, var(--accent2) 62%, var(--line)); }
+.ai-expert p { color: var(--sub); font-size: 12px; line-height: 1.6; margin: 8px 0 12px; }
 .modal-desc code { background: var(--code-bg); color: var(--code-text); padding: 1px 5px; border-radius: 5px; font-size: 12px; }
 .cm-list {
   max-height: 300px; overflow-y: auto; border: 1px solid var(--line);
@@ -294,6 +306,7 @@ body {
   .governance-title { display: block; }
   .governance-title > * { display: block; margin: 2px 0; }
   .topbar-note { white-space: normal; }
+  .ai-mode-group { grid-template-columns: 1fr; }
 }
 
 /* toast */

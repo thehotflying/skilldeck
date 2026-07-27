@@ -7,11 +7,14 @@ function theme(value) {
   document.documentElement.dataset.theme = value;
   $('#theme-ico').textContent = value === 'light' ? '☀️' : '🌙';
   $('#theme-label').textContent = value === 'light' ? '浅色' : '深色';
+  try { localStorage.setItem('skilldeck-theme', value); } catch (_) {}
 }
 
 function setup() {
-  theme('dark');
+  const savedTheme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+  theme(savedTheme);
   $('#refresh').addEventListener('click', loadCatalog);
+  $('#theme-toggle').addEventListener('click', () => theme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'));
   $('#search').addEventListener('input', (e) => { state.query = e.target.value; filter(); });
   $('#m-close').addEventListener('click', closeModal);
   $('#m-cancel').addEventListener('click', closeModal);
@@ -25,6 +28,10 @@ function setup() {
   $('#set-cancel').addEventListener('click', closeModelSettings);
   $('#set-save').addEventListener('click', saveModelSettings);
   $('#set-test').addEventListener('click', testModelConnection);
+  $('#ai-open').addEventListener('click', openAiRecommendation);
+  $('#ai-close').addEventListener('click', closeAiRecommendation);
+  $('#ai-cancel').addEventListener('click', closeAiRecommendation);
+  $('#ai-generate').addEventListener('click', generateAiRecommendation);
 }
 
 function switchView(view) {
@@ -276,6 +283,59 @@ function testModelConnection() {
     .then((data) => { $('#set-hint').textContent = `连接成功（HTTP ${data.status}）；没有发送 Skill 或机构资料。`; })
     .catch((e) => { $('#set-hint').textContent = e.message || '连接测试失败。'; })
     .finally(() => { $('#set-test').disabled = false; });
+}
+
+function openAiRecommendation() {
+  $('#ai-modal').style.display = 'grid';
+  $('#ai-task').value = '';
+  $('#ai-confirm').checked = false;
+  $('#ai-status').textContent = '未发送任何数据。请说明本次任务并确认外发范围。';
+  $('#ai-result').hidden = true;
+  $('#ai-result').innerHTML = '';
+}
+
+function closeAiRecommendation() { $('#ai-modal').style.display = 'none'; }
+
+function selectedAiMode() {
+  const checked = document.querySelector('input[name="ai-mode"]:checked');
+  return checked ? checked.value : 'skills';
+}
+
+function generateAiRecommendation() {
+  const task = $('#ai-task').value.trim();
+  if (task.length < 2) { $('#ai-status').textContent = '请先写明本次要完成的任务。'; return; }
+  if (!$('#ai-confirm').checked) {
+    $('#ai-status').textContent = '请先勾选确认：本次会向模型服务发送任务说明和最小技能摘要。';
+    return;
+  }
+  $('#ai-generate').disabled = true;
+  $('#ai-status').textContent = '正在请求模型建议；不会执行 Skill 或改动治理库存…';
+  modelRequest('/api/model-recommendation', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ task, mode: selectedAiMode(), confirmed_external: true }),
+  })
+    .then(renderAiRecommendation)
+    .catch((e) => { $('#ai-status').textContent = e.message || '无法生成建议。'; })
+    .finally(() => { $('#ai-generate').disabled = false; });
+}
+
+function renderAiRecommendation(data) {
+  $('#ai-status').textContent = `已取得建议：本次仅外发 ${data.outbound?.candidate_count || 0} 个候选 Skill 的最小摘要；没有执行 Skill。`;
+  const items = (data.recommendations || []).map((item) => `<article class="ai-item"><div><strong>${esc(item.name)}</strong><span class="gov-badge gov-${esc(item.treatment)}">${esc(LABEL[item.treatment] || item.treatment)}</span></div><p>${esc(item.description || '')}</p><p class="ai-reason">${esc(item.reason || '')}</p><button class="btn ghost ai-open-skill" type="button" data-ai-id="${esc(item.stable_id)}">查看 Skill</button></article>`).join('');
+  const expert = data.expert ? `<div class="ai-expert"><strong>${esc(data.expert.title)}</strong><p>建议作为本次临时专家组合使用，最高治理状态：<span class="gov-badge gov-${esc(data.expert.highest_treatment)}">${esc(LABEL[data.expert.highest_treatment] || data.expert.highest_treatment)}</span></p><button id="ai-add-expert" class="btn primary" type="button">加入本次专家组合</button></div>` : '';
+  $('#ai-result').innerHTML = `<p class="ai-summary">${esc(data.summary || '')}</p>${items || '<p class="ai-summary">模型没有给出可用的 Skill 建议。</p>'}${expert}`;
+  $('#ai-result').hidden = false;
+  $('#ai-result').querySelectorAll('[data-ai-id]').forEach((button) => button.addEventListener('click', () => {
+    const skill = state.skills.find((item) => item.stable_id === button.dataset.aiId);
+    if (skill) { closeAiRecommendation(); openDetail(skill); }
+  }));
+  const addExpert = $('#ai-add-expert');
+  if (addExpert) addExpert.addEventListener('click', () => {
+    state.expertIds = [...new Set([...state.expertIds, ...(data.expert.skill_ids || [])])];
+    closeAiRecommendation();
+    switchView('experts');
+    toast('已加入本次专家组合；仍按最高治理状态生成操作卡或调用卡。');
+  });
 }
 
 let toastTimer;

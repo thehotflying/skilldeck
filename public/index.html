@@ -37,6 +37,7 @@
           <strong>技能管理中心统一库存</strong>
           <span class="topbar-note">P4 安全调用卡：不扫描任意目录、不注入正文、不执行本地命令</span>
         </div>
+        <button id="ai-open" class="btn ghost" type="button">✨ AI 推荐</button>
         <button id="refresh" class="btn primary" type="button">刷新治理结果</button>
       </header>
 
@@ -164,6 +165,34 @@
       </div>
       <label class="confirm-wrap model-test-confirm"><input id="set-test-confirm" type="checkbox"> 我确认现在只访问上述模型提供商进行连通性测试；不发送任何 Skill 或机构资料。</label>
       <div class="modal-actions model-test-actions"><button class="btn ghost" id="set-test" type="button">测试连接（不发送 Skill 数据）</button></div>
+    </div>
+  </div>
+
+  <!-- P7：逐次确认后，模型只能提供建议，不能执行或修改治理库存。 -->
+  <div id="ai-modal" class="modal-mask" style="display:none">
+    <div class="modal ai-modal">
+      <div class="modal-head">
+        <div class="modal-skill">✨ AI 推荐</div>
+        <button class="modal-x" id="ai-close" type="button">×</button>
+      </div>
+      <div class="model-policy">
+        <strong>本次建议不会执行任何 Skill。</strong>
+        <p>仅在你勾选确认后，发送本次任务说明，以及最多 60 个候选 Skill 的名称、简介、分类、标签和治理状态。不会发送 Skill 正文、内部路径或机构资料。</p>
+      </div>
+      <label class="modal-label" for="ai-task">本次想完成什么？</label>
+      <textarea id="ai-task" class="modal-task" placeholder="例如：为养老机构筹备秋季活动，先收集公开案例并形成可审阅的方案草稿"></textarea>
+      <label class="modal-label">希望获得什么？</label>
+      <div class="ai-mode-group">
+        <label class="mode-opt"><input type="radio" name="ai-mode" value="skills" checked> 推荐 Skill <span class="mode-hint">给出最适合的 3–5 个能力</span></label>
+        <label class="mode-opt"><input type="radio" name="ai-mode" value="expert"> 建议专家组合 <span class="mode-hint">组合仍继承最高风险等级</span></label>
+      </div>
+      <label class="confirm-wrap"><input id="ai-confirm" type="checkbox"> 我确认本次将向模型服务发送上述任务说明及最小技能摘要；其中不应包含住民、员工、机构或其他敏感资料。</label>
+      <div class="modal-actions">
+        <button class="btn ghost" id="ai-cancel" type="button">取消</button>
+        <button class="btn primary" id="ai-generate" type="button">生成建议</button>
+      </div>
+      <div id="ai-status" class="cmd-chars"></div>
+      <div id="ai-result" class="ai-result" hidden></div>
     </div>
   </div>
 

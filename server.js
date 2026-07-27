@@ -11,6 +11,7 @@ const { URL } = require('node:url');
 const { loadGovernanceCatalog } = require('./governance-adapter');
 const { buildInvocationCard } = require('./governance-invocation-policy');
 const { KEYCHAIN_SERVICE, CONFIG_FILE, DEFAULT_CONFIG, normalizeMetadata, configStatus } = require('./model-config');
+const { MAX_TASK_LENGTH, selectCandidates, buildRecommendationMessages, parseRecommendation } = require('./model-recommendation');
 
 const PORT = process.env.PORT || 4177;
 const PUBLIC = path.join(__dirname, 'public');
@@ -183,6 +184,79 @@ const server = http.createServer(async (req, res) => {
       });
     } catch (_) {
       return sendJson(res, 502, { error: '无法连接模型提供商；请核对地址、网络和密钥权限。', external_request_started: true });
+    }
+  }
+
+  // P7: model recommendations are opt-in, send only a scoped task plus minimal skill metadata,
+  // and can never invoke a Skill or alter the governance catalog.
+  if (p === '/api/model-recommendation' && req.method === 'POST') {
+    const body = await readBody(req);
+    if (body.__tooLarge) return sendJson(res, 413, { error: '请求内容过大。', external_request_started: false });
+    const task = String(body.task || '').trim();
+    const mode = body.mode === 'expert' ? 'expert' : 'skills';
+    if (task.length < 2) return sendJson(res, 400, { error: '请说明本次要解决的任务。', external_request_started: false });
+    if (task.length > MAX_TASK_LENGTH) return sendJson(res, 400, { error: `任务说明最多 ${MAX_TASK_LENGTH} 个字符。`, external_request_started: false });
+    if (body.confirmed_external !== true) {
+      return sendJson(res, 400, {
+        error: '请先确认：本次会向模型服务发送任务说明，以及候选 Skill 的名称、简介、标签和治理状态。',
+        external_request_started: false,
+      });
+    }
+    const cfg = loadConfig();
+    if (!cfg.base_url || !cfg.model || !(await keychainHasSecret(cfg.provider_id))) {
+      return sendJson(res, 409, { error: '请先在“模型与隐私设置”中保存 API 地址、模型名称和钥匙串密钥。', external_request_started: false });
+    }
+    let catalog;
+    try { catalog = loadGovernanceCatalog(); }
+    catch (error) { return governanceUnavailable(res, error); }
+    const candidates = selectCandidates(catalog.skills || [], task);
+    if (!candidates.length) return sendJson(res, 503, { error: '治理中心没有可用于推荐的 Skill。', external_request_started: false });
+    const secret = await readKeychainSecret(cfg.provider_id);
+    if (!secret) return sendJson(res, 503, { error: '无法从 macOS 钥匙串读取该模型密钥。', external_request_started: false });
+    try {
+      const response = await fetch(`${cfg.base_url}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret}` },
+        body: JSON.stringify({ model: cfg.model, messages: buildRecommendationMessages({ task, mode, candidates }), temperature: 0.2, max_tokens: 1200 }),
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (!response.ok) return sendJson(res, 502, { error: `模型服务未接受推荐请求（HTTP ${response.status}）。`, external_request_started: true });
+      const data = await response.json();
+      const content = data?.choices?.[0]?.message?.content;
+      const recommendation = parseRecommendation(content, candidates.map((item) => item.stable_id), mode);
+      const byId = new Map((catalog.skills || []).map((skill) => [skill.stable_id, skill]));
+      const visible = (item) => {
+        const skill = byId.get(item.stable_id);
+        return skill ? {
+          stable_id: skill.stable_id, name: skill.name, description: skill.one_line || skill.description,
+          category: skill.category, treatment: skill.treatment?.entry || 'unknown', reason: item.reason,
+        } : null;
+      };
+      const recommendations = recommendation.recommendations.map(visible).filter(Boolean);
+      const expertSkills = (recommendation.expert?.skill_ids || []).map((id) => byId.get(id)).filter(Boolean);
+      return sendJson(res, 200, {
+        ok: true,
+        mode,
+        summary: recommendation.summary,
+        recommendations,
+        expert: recommendation.expert ? {
+          title: recommendation.expert.title,
+          skill_ids: expertSkills.map((skill) => skill.stable_id),
+          highest_treatment: expertSkills.reduce((highest, skill) => {
+            const rank = { pending: 4, dedupe: 4, unknown: 4, 'strong-gate': 3, 'normal-gate': 2, ready: 1 };
+            return (rank[skill.treatment?.entry] || 4) > (rank[highest] || 0) ? skill.treatment?.entry : highest;
+          }, 'ready'),
+        } : null,
+        outbound: {
+          confirmed_for_this_request: true,
+          candidate_count: candidates.length,
+          sent_fields: ['本次任务说明', 'Skill 名称', '一句话简介', '分类', '标签', '治理状态'],
+          not_sent: ['完整 SKILL.md', '内部或绝对路径', '住民、员工或机构资料'],
+        },
+        safety: { local_execution_started: false, governance_catalog_modified: false, skill_body_exposed: false },
+      });
+    } catch (error) {
+      return sendJson(res, 502, { error: error.message || '模型推荐失败。', external_request_started: true });
     }
   }
 
