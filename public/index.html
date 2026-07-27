@@ -21,6 +21,10 @@
       <nav class="nav" aria-label="技能管理中心功能">
         <div class="nav-group-label">技能库</div>
         <button class="nav-item active" data-view="skills" type="button"><span class="nav-ico">🎴</span> Skill 总览</button>
+        <div class="nav-group-label">工作台</div>
+        <button class="nav-item" data-view="scenes" type="button"><span class="nav-ico">🧭</span> 场景工作台</button>
+        <button class="nav-item" data-view="assembly" type="button"><span class="nav-ico">🧩</span> 插件装配</button>
+        <button class="nav-item" data-view="plugins" type="button"><span class="nav-ico">🔌</span> 我的插件</button>
         <div class="nav-group-label">治理</div>
         <button class="nav-item" data-view="health" type="button"><span class="nav-ico">🩺</span> 健康与安全</button>
         <button class="nav-item" data-view="duplicates" type="button"><span class="nav-ico">🔁</span> 重复与合并</button>
@@ -59,6 +63,42 @@
         </div>
         <main id="grid" class="grid"></main>
         <div id="empty" class="empty" style="display:none"></div>
+      </section>
+
+      <!-- P10：场景由固定规则筛选统一库存，不依赖自然语言自动触发。 -->
+      <section id="view-scenes" class="view" hidden>
+        <div class="workbench-shell">
+          <div class="workbench-title"><div><h2>场景工作台</h2><p>选择一个明确场景，从统一库存中筛选可用 Skill 与建议组合。不会自动调用或执行任何 Skill。</p></div></div>
+          <div id="scene-tabs" class="scene-tabs"></div>
+          <div id="scene-status" class="workbench-status">请选择场景。</div>
+          <div id="scene-summary" class="model-policy"></div>
+          <div id="scene-candidates" class="selection-list"></div>
+          <div class="workbench-actions"><button id="scene-plan" class="btn primary" type="button">生成本场景任务方案</button></div>
+          <div id="scene-card" class="governance-card" hidden></div>
+        </div>
+      </section>
+
+      <!-- P10：装配只做分析和计划，不复制或迁移现有 Skill。 -->
+      <section id="view-assembly" class="view" hidden>
+        <div class="workbench-shell">
+          <div class="workbench-title"><div><h2>插件装配</h2><p>从统一库存选择多个 Skill，先查看职责、重复和静态风险，再生成可审查的插件创建计划。</p></div></div>
+          <div class="assembly-form"><input id="assembly-search" class="search" placeholder="筛选要装配的 Skill…" /><span id="assembly-count" class="count"></span></div>
+          <div id="assembly-candidates" class="selection-list"></div>
+          <div class="assembly-form"><input id="assembly-name" class="set-input" placeholder="新插件英文短横线名称，例如：ppt-workbench" /><textarea id="assembly-purpose" class="modal-task" placeholder="说明这个插件要解决什么问题，以及默认不做什么。"></textarea></div>
+          <div class="workbench-actions"><button id="assembly-analyze" class="btn ghost" type="button">分析所选 Skill</button><button id="assembly-plan" class="btn primary" type="button">生成插件创建计划</button></div>
+          <div id="assembly-card" class="governance-card" hidden></div>
+        </div>
+      </section>
+
+      <!-- P10：插件清单来自治理中心固定 inventory 命令，隐藏绝对路径。 -->
+      <section id="view-plugins" class="view" hidden>
+        <div class="workbench-shell">
+          <div class="workbench-title"><div><h2>我的插件</h2><p>查看当前可发现的已安装插件、版本、状态和已观察到的组成；所有变更只生成计划卡。</p></div><button id="plugins-refresh" class="btn primary" type="button">刷新插件清单</button></div>
+          <div id="plugins-status" class="workbench-status">正在读取治理中心的插件清单…</div>
+          <div class="plugin-add-form"><input id="plugin-change-name" class="set-input" placeholder="新增插件英文短横线名称（用于新增计划）" /><input id="plugin-change-purpose" class="set-input" placeholder="新增或变更的用途说明（用于新增计划）" /><button id="plugin-add-plan" class="btn ghost" type="button">生成新增插件计划</button></div>
+          <div id="plugins-list" class="plugin-list"></div>
+          <div id="plugin-change-card" class="governance-card" hidden></div>
+        </div>
       </section>
 
       <!-- P8：所有项目由原技能管理中心生成；这里只显示只读治理信息与操作卡。 -->

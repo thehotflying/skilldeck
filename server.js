@@ -10,6 +10,7 @@ const { spawn } = require('node:child_process');
 const { URL } = require('node:url');
 const { loadGovernanceCatalog } = require('./governance-adapter');
 const { planOperation, compareSkills, creationCard, legacyQuarantineCard, dashboard } = require('./governance-operations');
+const { SCENES, sceneCatalog, scenePlan, assemblyAnalysis, pluginAssemblyPlan, myPlugins, pluginChangePlan } = require('./p10-workbench');
 const { buildInvocationCard } = require('./governance-invocation-policy');
 const { KEYCHAIN_SERVICE, CONFIG_FILE, DEFAULT_CONFIG, normalizeMetadata, configStatus } = require('./model-config');
 const { MAX_TASK_LENGTH, selectCandidates, buildRecommendationMessages, parseRecommendation } = require('./model-recommendation');
@@ -148,6 +149,45 @@ const server = http.createServer(async (req, res) => {
     } catch (error) {
       return sendJson(res, 400, { error: error.message || '无法生成创建操作卡。', local_execution_started: false, not_executed: true });
     }
+  }
+
+  // P10: scenario, plugin assembly, and installed-plugin surfaces are planning-only.
+  // They use the fixed governance catalog and the control center's inventory command;
+  // no endpoint accepts filesystem paths or invokes a local/external executor.
+  if (p === '/api/p10/scenes' && req.method === 'GET') {
+    return sendJson(res, 200, { evidence: 'current_read', scenes: SCENES.map(({ id, title, description, roles }) => ({ id, title, description, roles })), safety: { read_only: true, no_natural_language_auto_trigger: true } });
+  }
+  if (p === '/api/p10/scene' && req.method === 'GET') {
+    try { return sendJson(res, 200, sceneCatalog(requestUrl.searchParams.get('scene') || '')); }
+    catch (error) { return sendJson(res, 400, { error: error.message || '无法读取场景工作台。', local_execution_started: false, not_executed: true }); }
+  }
+  if (p === '/api/p10/scene-plan' && req.method === 'POST') {
+    const body = await readBody(req);
+    if (body.__tooLarge) return sendJson(res, 413, { error: '请求内容过大。', local_execution_started: false, not_executed: true });
+    try { return sendJson(res, 200, scenePlan({ sceneId: body.scene_id, ids: body.ids })); }
+    catch (error) { return sendJson(res, 400, { error: error.message || '无法生成场景方案卡。', local_execution_started: false, not_executed: true }); }
+  }
+  if (p === '/api/p10/assembly-analysis' && req.method === 'POST') {
+    const body = await readBody(req);
+    if (body.__tooLarge) return sendJson(res, 413, { error: '请求内容过大。', local_execution_started: false, not_executed: true });
+    try { return sendJson(res, 200, assemblyAnalysis(body.ids)); }
+    catch (error) { return sendJson(res, 400, { error: error.message || '无法分析插件装配。', local_execution_started: false, not_executed: true }); }
+  }
+  if (p === '/api/p10/plugin-assembly-plan' && req.method === 'POST') {
+    const body = await readBody(req);
+    if (body.__tooLarge) return sendJson(res, 413, { error: '请求内容过大。', local_execution_started: false, not_executed: true });
+    try { return sendJson(res, 200, pluginAssemblyPlan({ name: body.name, purpose: body.purpose, ids: body.ids })); }
+    catch (error) { return sendJson(res, 400, { error: error.message || '无法生成插件装配计划。', local_execution_started: false, not_executed: true }); }
+  }
+  if (p === '/api/p10/plugins' && req.method === 'GET') {
+    try { return sendJson(res, 200, myPlugins()); }
+    catch (error) { return sendJson(res, 503, { error: error.message || '无法读取已安装插件。', local_execution_started: false, not_executed: true }); }
+  }
+  if (p === '/api/p10/plugin-change-plan' && req.method === 'POST') {
+    const body = await readBody(req);
+    if (body.__tooLarge) return sendJson(res, 413, { error: '请求内容过大。', local_execution_started: false, not_executed: true });
+    try { return sendJson(res, 200, pluginChangePlan({ action: body.action, pluginId: body.plugin_id, ids: body.ids, name: body.name, purpose: body.purpose })); }
+    catch (error) { return sendJson(res, 400, { error: error.message || '无法生成插件变更计划。', local_execution_started: false, not_executed: true }); }
   }
 
   // P4: cards never execute a Skill, disclose an absolute path, or persist a confirmation.

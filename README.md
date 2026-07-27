@@ -51,6 +51,14 @@ node server.js
 
 当前尚**不能**把多个既有 Skill 自动搬进一个新插件：页面能生成“合并 Skill”或“创建插件”的独立操作卡，但没有成员迁移与执行链路。
 
+## P10：场景、插件装配与我的插件
+
+- **场景工作台**提供 PPT、文档写作、信息收集三个通用场景；每个场景按固定规则筛选治理库存，展示建议职责、成员风险和任务方案卡，不依赖自然语言自动触发。
+- **插件装配**允许从统一库存选择 2–12 个 Skill，展示建议职责、重复线索、静态风险线索与依赖未知项，并生成包含名称、入口、子 Skill、测试、备份和回滚的插件创建计划。
+- **我的插件**从技能管理中心的固定 `inventory` 命令读取当前可发现的已安装插件，展示版本、状态及已观察到的个人插件缓存组成；可生成新增、替换、合并、拆分、优化、回滚计划。
+
+以上功能均是只读分析或 `not_executed` 计划卡：不会复制、迁移、安装、卸载、修改或删除任何插件和 Skill。真实执行必须确认具体计划 ID，并另行完成备份、最小范围实施、官方校验与新任务回归。
+
 ## P7：主题与 AI 推荐
 
 - 左下角的“深色 / 浅色”按钮可实际切换主题，并记住本机浏览器中的选择；
@@ -85,6 +93,7 @@ node scripts/test-governance-adapter.js
 node scripts/test-governance-invocation-policy.js
 node scripts/test-governance-operations.js
 node scripts/test-direct-navigation.js
+node scripts/test-p10-workbench.js
 node scripts/test-model-config.js
 python3 /Users/mac/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py .
 ```

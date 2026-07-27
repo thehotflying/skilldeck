@@ -6,7 +6,7 @@ const root = path.resolve(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'public', 'app.js'), 'utf8');
 
-const requiredViews = ['skills', 'health', 'duplicates', 'creation', 'migration', 'experts', 'model'];
+const requiredViews = ['skills', 'scenes', 'assembly', 'plugins', 'health', 'duplicates', 'creation', 'migration', 'experts', 'model'];
 for (const view of requiredViews) {
   if (!html.includes(`data-view="${view}"`)) throw new Error(`missing sidebar entry: ${view}`);
   if (!app.includes(`${view}: { title:`)) throw new Error(`missing view metadata: ${view}`);

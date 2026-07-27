@@ -1,5 +1,5 @@
 const $ = (s) => document.querySelector(s);
-const state = { skills: [], filtered: [], category: 'all', treatment: 'all', query: '', catalog: null, current: null, expertIds: [], view: 'skills' };
+const state = { skills: [], filtered: [], category: 'all', treatment: 'all', query: '', catalog: null, current: null, expertIds: [], view: 'skills', sceneId: 'ppt', sceneIds: [], assemblyIds: [], assemblyQuery: '', plugins: [] };
 const LABEL = { pending: '待整理', dedupe: '去重处理', 'normal-gate': '普通确认门', 'strong-gate': '强确认门', ready: '可直接用', unknown: '待核验' };
 const GOVERNANCE_VIEWS = new Set(['health', 'duplicates', 'creation', 'migration']);
 const VIEW_META = {
@@ -10,6 +10,9 @@ const VIEW_META = {
   migration: { title: '迁移与隔离', note: '直接查看旧入口收敛清单与可回滚隔离规划' },
   experts: { title: '专家组合', note: '临时组合多个 Skill，并继承最高治理状态' },
   model: { title: '模型与隐私', note: '配置、测试与推荐均保留明确的外部调用确认门' },
+  scenes: { title: '场景工作台', note: '按明确场景筛选统一库存，不依赖自然语言盲盒触发' },
+  assembly: { title: '插件装配', note: '分析多个 Skill 并生成可审查的插件创建计划' },
+  plugins: { title: '我的插件', note: '查看可发现插件并生成未执行的变更计划卡' },
 };
 const esc = (v) => String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
@@ -45,6 +48,12 @@ function setup() {
   $('#gc-close').addEventListener('click', closeGovernanceCreate);
   $('#gc-cancel').addEventListener('click', closeGovernanceCreate);
   $('#gc-generate').addEventListener('click', generateGovernanceCreateCard);
+  $('#scene-plan').addEventListener('click', generateScenePlan);
+  $('#assembly-search').addEventListener('input', (event) => { state.assemblyQuery = event.target.value; renderAssemblyCandidates(); });
+  $('#assembly-analyze').addEventListener('click', analyzeAssembly);
+  $('#assembly-plan').addEventListener('click', generateAssemblyPlan);
+  $('#plugins-refresh').addEventListener('click', loadMyPlugins);
+  $('#plugin-add-plan').addEventListener('click', () => generatePluginChangePlan('add', ''));
 }
 
 function switchView(view) {
@@ -54,6 +63,9 @@ function switchView(view) {
   $('#view-governance').hidden = !governance;
   $('#view-experts').hidden = state.view !== 'experts';
   $('#view-model').hidden = state.view !== 'model';
+  $('#view-scenes').hidden = state.view !== 'scenes';
+  $('#view-assembly').hidden = state.view !== 'assembly';
+  $('#view-plugins').hidden = state.view !== 'plugins';
   document.querySelectorAll('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.view === state.view));
   const meta = VIEW_META[state.view];
   $('#workspace-title').textContent = meta.title;
@@ -65,6 +77,9 @@ function switchView(view) {
   if (state.view === 'experts') renderExpertWorkbench();
   if (governance) loadGovernanceDashboard();
   if (state.view === 'model') loadModelSettings();
+  if (state.view === 'scenes') loadSceneWorkbench();
+  if (state.view === 'assembly') loadAssemblyWorkbench();
+  if (state.view === 'plugins') loadMyPlugins();
 }
 
 function loadCatalog() {
@@ -318,6 +333,127 @@ function generateGovernanceCreateCard() {
     .then((card) => { renderGovernanceCard($('#gc-card'), card); $('#gc-status').textContent = '已生成创建操作卡；尚未创建任何文件。'; })
     .catch((error) => { $('#gc-status').textContent = error.message || '无法生成创建操作卡。'; })
     .finally(() => { $('#gc-generate').disabled = false; });
+}
+
+function requestJson(url, options = {}) {
+  return fetch(url, options).then((res) => res.json().then((data) => ({ res, data }))).then(({ res, data }) => {
+    if (!res.ok || data.error) throw new Error(data.error || '读取失败');
+    return data;
+  });
+}
+
+function p10CardHtml(card, title) {
+  const selected = (card.selected || card.selected_skills || []).map((item) => item.name || item.stable_id).filter(Boolean);
+  const facts = [card.plan_id ? `计划 ID：${card.plan_id}` : null, card.status === 'not_executed' ? '状态：未执行' : null,
+    selected.length ? `已选 Skill：${selected.join('、')}` : null, card.highest_treatment ? `最高风险状态：${LABEL[card.highest_treatment] || card.highest_treatment}` : null,
+    card.execution_gate || null, card.backup ? `备份：${card.backup}` : null,
+    card.validation ? `验证：${Array.isArray(card.validation) ? card.validation.join('；') : card.validation}` : null, card.rollback ? `回滚：${card.rollback}` : null].filter(Boolean);
+  return `<div class="invocation-head"><strong>${esc(title)}</strong><span class="gov-badge gov-unknown">未执行</span></div><ul>${facts.map((item) => `<li>${esc(item)}</li>`).join('')}</ul><p class="invocation-note">本页未复制、移动、删除或创建文件；未连接外部服务。需要实际执行时，必须确认这张具体计划卡。</p>`;
+}
+
+function toggleSelected(listName, id, checked) {
+  const next = new Set(state[listName] || []);
+  if (checked) next.add(id); else next.delete(id);
+  if (next.size > 12) { toast('一次最多选择 12 个 Skill。'); return; }
+  state[listName] = [...next];
+}
+
+function candidateRow(item, selected, dataKey) {
+  const risk = (item.risk_types || []).length ? `风险线索：${item.risk_types.join('、')}` : '未发现静态风险线索';
+  return `<label class="selection-row"><input type="checkbox" data-${dataKey}="${esc(item.stable_id)}" ${selected ? 'checked' : ''}><div><strong>${esc(item.name)}</strong><span class="source-badge">${esc(item.category || '未分类')}</span><span class="gov-badge gov-${esc(item.treatment || 'unknown')}">${esc(LABEL[item.treatment] || item.treatment || '待核验')}</span><p>${esc(item.description || '')}</p><small>${esc(risk)}</small></div></label>`;
+}
+
+function loadSceneWorkbench() {
+  $('#scene-status').textContent = '正在从统一库存读取场景候选…';
+  requestJson('/api/p10/scenes').then((data) => {
+    $('#scene-tabs').innerHTML = (data.scenes || []).map((scene) => `<button class="cat ${scene.id === state.sceneId ? 'active' : ''}" data-scene="${esc(scene.id)}" type="button">${esc(scene.title)}</button>`).join('');
+    document.querySelectorAll('[data-scene]').forEach((button) => button.addEventListener('click', () => { state.sceneId = button.dataset.scene; state.sceneIds = []; loadSceneWorkbench(); }));
+    return requestJson(`/api/p10/scene?scene=${encodeURIComponent(state.sceneId)}`);
+  }).then(renderSceneWorkbench).catch((error) => { $('#scene-status').textContent = error.message || '无法读取场景工作台。'; });
+}
+
+function renderSceneWorkbench(data) {
+  const candidates = data.candidates || []; const available = new Set(candidates.map((item) => item.stable_id));
+  state.sceneIds = state.sceneIds.filter((id) => available.has(id));
+  if (!state.sceneIds.length) state.sceneIds = (data.suggested || []).map((item) => item.stable_id);
+  $('#scene-status').textContent = `${data.scene?.title || '场景'}：已按固定规则筛选 ${candidates.length} 个候选；默认勾选建议组合。`;
+  $('#scene-summary').innerHTML = `<strong>建议职责顺序</strong><p>${esc((data.scene?.roles || []).join(' → '))}</p><p>建议组合最高治理状态：<span class="gov-badge gov-${esc(data.highest_treatment || 'unknown')}">${esc(LABEL[data.highest_treatment] || data.highest_treatment || '待核验')}</span>。选择不会自动执行。</p>`;
+  $('#scene-candidates').innerHTML = candidates.map((item) => candidateRow(item, state.sceneIds.includes(item.stable_id), 'scene-skill')).join('') || '<p class="empty-inline">当前没有符合固定场景规则的候选。</p>';
+  document.querySelectorAll('[data-scene-skill]').forEach((box) => box.addEventListener('change', () => { toggleSelected('sceneIds', box.dataset.sceneSkill, box.checked); renderSceneWorkbench(data); }));
+  $('#scene-card').hidden = true;
+}
+
+function generateScenePlan() {
+  const container = $('#scene-card'); container.hidden = false; container.textContent = '正在生成场景任务方案…';
+  requestJson('/api/p10/scene-plan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scene_id: state.sceneId, ids: state.sceneIds }) })
+    .then((card) => { container.innerHTML = p10CardHtml(card, `${card.scene?.title || '场景'}任务方案`); })
+    .catch((error) => { container.textContent = error.message || '无法生成场景任务方案。'; });
+}
+
+function loadAssemblyWorkbench() {
+  if (state.skills.length) { renderAssemblyCandidates(); return; }
+  $('#assembly-candidates').innerHTML = '<p class="empty-inline">正在读取统一库存…</p>';
+  requestJson('/api/governance').then((data) => { state.catalog = data; state.skills = data.skills || []; renderAssemblyCandidates(); })
+    .catch((error) => { $('#assembly-candidates').innerHTML = `<p class="empty-inline">${esc(error.message || '无法读取统一库存。')}</p>`; });
+}
+
+function renderAssemblyCandidates() {
+  const q = state.assemblyQuery.trim().toLowerCase(); const selected = new Set(state.assemblyIds);
+  const candidates = state.skills.filter((skill) => {
+    const text = `${skill.name || ''} ${skill.description || ''} ${(skill.tags || []).join(' ')}`.toLowerCase();
+    return !q || text.includes(q);
+  }).slice(0, 80);
+  $('#assembly-count').textContent = `已选择 ${state.assemblyIds.length} 个；当前显示 ${candidates.length} 个候选`;
+  $('#assembly-candidates').innerHTML = candidates.map((skill) => candidateRow({ stable_id: skill.stable_id, name: skill.name, description: skill.one_line || skill.description, category: skill.category, treatment: skill.treatment?.entry || 'unknown', risk_types: Object.keys(skill.risk_clues || {}).filter((key) => skill.risk_clues[key]) }, selected.has(skill.stable_id), 'assembly-skill')).join('') || '<p class="empty-inline">没有匹配的候选。请调整筛选词。</p>';
+  document.querySelectorAll('[data-assembly-skill]').forEach((box) => box.addEventListener('change', () => { toggleSelected('assemblyIds', box.dataset.assemblySkill, box.checked); renderAssemblyCandidates(); }));
+}
+
+function renderAssemblyCard(data, title) {
+  const container = $('#assembly-card');
+  if (data.plan_id) { container.innerHTML = p10CardHtml(data, title); container.hidden = false; return; }
+  const responsibilities = (data.suggested_responsibilities || []).map((item) => `${item.role}：${item.skills.join('、')}`).join('；');
+  const facts = [responsibilities ? `建议职责：${responsibilities}` : null, data.dependency_note || null,
+    data.duplicate_clues?.length ? `重复线索：${data.duplicate_clues.length} 项，需人工复核。` : '未发现所选成员的重复线索。',
+    data.static_risk_clues?.length ? `静态风险线索：${data.static_risk_clues.map((item) => item.skill).join('、')}` : '未发现所选成员的静态风险线索。'].filter(Boolean);
+  container.innerHTML = `<div class="invocation-head"><strong>${esc(title)}</strong><span class="gov-badge gov-unknown">只读分析</span></div><ul>${facts.map((item) => `<li>${esc(item)}</li>`).join('')}</ul><p class="invocation-note">依赖状态仅为静态线索；未复制、迁移或创建任何插件。</p>`;
+  container.hidden = false;
+}
+
+function analyzeAssembly() {
+  const container = $('#assembly-card'); container.hidden = false; container.textContent = '正在分析所选 Skill…';
+  requestJson('/api/p10/assembly-analysis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: state.assemblyIds }) })
+    .then((data) => renderAssemblyCard(data, '插件装配分析')).catch((error) => { container.textContent = error.message || '无法分析插件装配。'; });
+}
+
+function generateAssemblyPlan() {
+  const container = $('#assembly-card'); container.hidden = false; container.textContent = '正在生成插件创建计划…';
+  requestJson('/api/p10/plugin-assembly-plan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: state.assemblyIds, name: $('#assembly-name').value.trim(), purpose: $('#assembly-purpose').value.trim() }) })
+    .then((data) => renderAssemblyCard(data, '插件创建计划')).catch((error) => { container.textContent = error.message || '无法生成插件创建计划。'; });
+}
+
+function loadMyPlugins() {
+  $('#plugins-status').textContent = '正在从技能管理中心读取可发现的已安装插件…';
+  requestJson('/api/p10/plugins').then((data) => {
+    state.plugins = data.plugins || [];
+    $('#plugins-status').textContent = `已发现 ${state.plugins.length} 个已安装插件。组成只在个人插件缓存已观察到时展示；绝对路径不会显示。`;
+    renderMyPlugins();
+  }).catch((error) => { $('#plugins-status').textContent = error.message || '无法读取插件清单。'; $('#plugins-list').innerHTML = ''; });
+}
+
+function renderMyPlugins() {
+  $('#plugins-list').innerHTML = state.plugins.map((plugin) => {
+    const members = plugin.composition || [];
+    const composition = members.length ? members.slice(0, 12).map((member) => `${member.name}（${LABEL[member.treatment] || member.treatment}）`).join('、') : '未在个人插件缓存中观察到组成；不推断为空。';
+    return `<article class="plugin-item"><div class="plugin-head"><div><strong>${esc(plugin.name)}</strong><span class="source-badge">${esc(plugin.marketplace)}</span><span class="gov-badge gov-${esc(plugin.highest_treatment || 'unknown')}">${esc(LABEL[plugin.highest_treatment] || plugin.highest_treatment || '待核验')}</span></div><span>${esc(plugin.status)} · ${esc(plugin.version)}</span></div><p>组成：${esc(composition)}</p><small>组成证据：${esc(plugin.composition_evidence)}</small><div class="governance-actions"><button class="btn ghost" data-plugin-plan="replace" data-plugin-id="${esc(plugin.plugin_id)}" type="button">替换计划</button><button class="btn ghost" data-plugin-plan="merge" data-plugin-id="${esc(plugin.plugin_id)}" type="button">合并计划</button><button class="btn ghost" data-plugin-plan="split" data-plugin-id="${esc(plugin.plugin_id)}" type="button">拆分计划</button><button class="btn ghost" data-plugin-plan="evolve" data-plugin-id="${esc(plugin.plugin_id)}" type="button">优化计划</button><button class="btn danger" data-plugin-plan="rollback" data-plugin-id="${esc(plugin.plugin_id)}" type="button">回滚计划</button></div></article>`;
+  }).join('') || '<p class="empty-inline">没有读取到已安装插件。</p>';
+  document.querySelectorAll('[data-plugin-plan]').forEach((button) => button.addEventListener('click', () => generatePluginChangePlan(button.dataset.pluginPlan, button.dataset.pluginId)));
+}
+
+function generatePluginChangePlan(action, pluginId) {
+  const container = $('#plugin-change-card'); container.hidden = false; container.textContent = '正在生成插件变更计划…';
+  requestJson('/api/p10/plugin-change-plan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, plugin_id: pluginId, ids: state.assemblyIds, name: $('#plugin-change-name').value.trim(), purpose: $('#plugin-change-purpose').value.trim() }) })
+    .then((data) => { container.innerHTML = p10CardHtml(data, `插件${({ add: '新增', replace: '替换', merge: '合并', split: '拆分', evolve: '优化', rollback: '回滚' })[action] || '变更'}计划`); })
+    .catch((error) => { container.textContent = error.message || '无法生成插件变更计划。'; });
 }
 
 function copyText(text) {
